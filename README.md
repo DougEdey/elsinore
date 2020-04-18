@@ -1,2 +1,2 @@
 # Elsinore2.0
-StrangeBrew Elsinore re-wrtie
+StrangeBrew Elsinore re-write in Rust
