@@ -68,3 +68,5 @@ yarn-debug.log*
 
 # Ignore Rust Target Directory
 target
+
+*.db
