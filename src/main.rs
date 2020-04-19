@@ -10,17 +10,9 @@ mod lib;
 
 use std::thread;
 use diesel::prelude::*;
-use dotenv::dotenv;
-use std::env;
 
-pub fn establish_connection() -> SqliteConnection {
-    dotenv().ok();
 
-    let database_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set.");
-    SqliteConnection::establish(&database_url)
-        .expect(&format!("Error connecting to {}", database_url))
-}
+
 
 #[get("/")]
 fn index() -> &'static str {
@@ -28,22 +20,13 @@ fn index() -> &'static str {
 }
 
 fn main() {
-    use self::lib::schema::settings::dsl::*;
-    use self::lib::update_brewery_name;
+    use self::lib::{update_brewery_name, get_brewery_name};
 
-    let connection = establish_connection();
-    let str_bname  = settings.select(brewery_name).limit(1).load::<Option<String>>(&connection)
-        .expect("Error loading brewery name.");
-
-    let mut bname = None;
-
-    if str_bname.len() > 0 {
-        bname = Some(&str_bname);
-    } 
+    let brewery_name = get_brewery_name();
     
-    match bname {
-        Some(x) => println!("Brewery name is {}", x[0].as_ref().unwrap()),
-        None => update_brewery_name(connection),
+    match brewery_name {
+        Some(x) => println!("Brewery name is {}", x),
+        None => update_brewery_name(None),
     }
 
     thread::spawn(|| {

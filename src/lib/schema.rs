@@ -9,7 +9,7 @@ table! {
 
 table! {
     settings (brewery_name) {
-        brewery_name -> Nullable<Text>,
+        brewery_name -> Text,
     }
 }
 
