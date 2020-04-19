@@ -24,3 +24,7 @@ I'm trying out [Diesel](https://diesel.rs/guides/getting-started/) as it seems f
 With Diesel, I'm using [dotenv](https://docs.rs/dotenv/0.15.0/dotenv/) which puts the environment variables in the local `.env` file.
 
 By default, the database will be at `elsinore.db`, but this can be customized with `DATABASE_URL` in this file
+
+## Running migrations
+
+Once you have diesel installed `diesel migration run` will run the migrations, todo: Work out how to do this on clients
