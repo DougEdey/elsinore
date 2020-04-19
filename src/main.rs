@@ -4,10 +4,9 @@
 #[macro_use] extern crate diesel;
 extern crate dotenv;
 
-
-pub mod schema;
 pub mod models;
 pub mod controls;
+mod lib;
 
 use std::thread;
 use diesel::prelude::*;
@@ -29,7 +28,9 @@ fn index() -> &'static str {
 }
 
 fn main() {
-    use self::schema::settings::dsl::*;
+    use self::lib::schema::settings::dsl::*;
+    use self::lib::update_brewery_name;
+
     let connection = establish_connection();
     let str_bname  = settings.select(brewery_name).limit(1).load::<Option<String>>(&connection)
         .expect("Error loading brewery name.");
@@ -44,40 +45,10 @@ fn main() {
         Some(x) => println!("Brewery name is {}", x[0].as_ref().unwrap()),
         None => update_brewery_name(connection),
     }
-    
-        
+
     thread::spawn(|| {
         controls::pid_loop();
     });
     rocket::ignite().mount("/", routes![index]).launch();
-    
 }
 
-fn update_brewery_name(connection: SqliteConnection) {
-    use self::schema::settings::dsl::*;
-    use std::io::{stdin,stdout,Write};
-    let mut s = String::new();
-
-    println!("Welcome to Elsinore! What would you like to call your brewery?");
-    println!("(default: Elsinore)");
-    print!("> ");
-
-    let _=stdout().flush();
-    stdin().read_line(&mut s).expect("Defaulting to Elsinore.");
-
-    if let Some('\n')=s.chars().next_back() {
-        s.pop();
-    }
-    if let Some('\r')=s.chars().next_back() {
-        s.pop();
-    }
-
-    let rows_inserted = diesel::insert_into(settings)
-        .values(&brewery_name.eq(s)).execute(&connection);
-
-    if Ok(1) == rows_inserted {
-        println!("Updated!")
-    } else {
-        println!("Failed to insert!");
-    }
-}
