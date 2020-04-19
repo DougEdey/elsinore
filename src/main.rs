@@ -3,7 +3,7 @@
 #[macro_use] extern crate rocket;
 
 mod controls;
-use std::{thread, time};
+use std::thread;
 
 #[get("/")]
 fn index() -> &'static str {
@@ -12,12 +12,7 @@ fn index() -> &'static str {
 
 fn main() {
     thread::spawn(|| {
-        loop {
-            controls::calculate_pid();
-            controls::one_wire::temperature();
-
-            thread::sleep(time::Duration::from_millis(5000));
-        }
+        controls::pid_loop();
     });
     rocket::ignite().mount("/", routes![index]).launch();
     
