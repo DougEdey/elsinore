@@ -14,8 +14,9 @@ You'll need [Rustup](https://rustup.rs/) for the nightly builds that Rocket requ
 ## Commands to run
  * `rustup default nightly` -> Installs Rust nightly for Rocket
  * `cargo install diesel_cli --no-default-features --features sqlite` --> Just installs diesel-cli for sqlite, you can switch to postgres/mysql if you want
- * `diesel setup` -> Initializes the database
+ * `diesel setup` -> Initializes the main databases
  * `diesel migration run` -> Runs any pending migrations
+ * `scripts/setup_dev.sh` -> Initializes the main and test databases
 
 ## Object Relation Mapping (ORM)
 

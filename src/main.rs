@@ -7,7 +7,7 @@ extern crate chrono;
 
 pub mod models;
 pub mod controls;
-mod lib;
+mod database_helpers;
 
 use std::thread;
 
@@ -17,7 +17,7 @@ fn index() -> &'static str {
 }
 
 fn main() {
-    use self::lib::{update_brewery_name, get_brewery_name, establish_connection};
+    use self::database_helpers::{update_brewery_name, get_brewery_name, establish_connection};
 
     let connection = establish_connection();
     let brewery_name = get_brewery_name(&connection);
