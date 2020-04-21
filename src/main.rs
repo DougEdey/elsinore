@@ -2,8 +2,6 @@
 
 #[macro_use] extern crate rocket;
 #[macro_use] extern crate diesel;
-extern crate dotenv;
-extern crate chrono;
 
 pub mod models;
 pub mod controls;

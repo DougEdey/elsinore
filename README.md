@@ -9,7 +9,7 @@ You'll need [Rustup](https://rustup.rs/) for the nightly builds that Rocket requ
 
 ## Dependencies
 
- * `sqlite`, `sqlite3`, `libsqlite3-0` (these are required for diesel-cli)
+ * `sqlite`, `sqlite3`, `libsqlite3-0` (these are required for diesel-cli, but should now be included)
 
 ## Commands to run
  * `rustup default nightly` -> Installs Rust nightly for Rocket
@@ -17,6 +17,10 @@ You'll need [Rustup](https://rustup.rs/) for the nightly builds that Rocket requ
  * `diesel setup` -> Initializes the main databases
  * `diesel migration run` -> Runs any pending migrations
  * `scripts/setup_dev.sh` -> Initializes the main and test databases
+
+## Compiling
+  
+By default `cargo build` will build for your current platform, but for RaspberryPi (ArmV7), you can use `cargo build --target=armv7-unknown-linux-gnueabihf` to cross compile!
 
 ## Object Relation Mapping (ORM)
 

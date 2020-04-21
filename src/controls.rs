@@ -6,7 +6,6 @@ pub mod one_wire;
 
 pub fn pid_loop() {
     loop {
-        one_wire::temperature();
         calculate_pid();
         
         next_iteration();

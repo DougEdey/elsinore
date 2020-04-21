@@ -12,3 +12,6 @@ diesel = { version = "1.4.4", features = [ "sqlite" ] }
 dotenv = "0.15.0"
 juniper = "0.14.2"
 chrono = "0.4.11"
+onewire = "0.3.13"
+embedded-hal = "0.2.3"
+libsqlite3-sys = { version = "0.17.3", features = ["bundled"] }
