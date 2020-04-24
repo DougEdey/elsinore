@@ -459,6 +459,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rppal"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "embedded-hal 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.69 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nb 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "void 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "safemem"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -500,6 +512,7 @@ dependencies = [
  "libsqlite3-sys 0.17.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "onewire 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rppal 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -717,6 +730,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum rocket 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "e20afbad214b001cabbe31dd270b48b3be980a7153ee2ed8392e241f856d651b"
 "checksum rocket_codegen 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "2108b35e2c3a35759d3f16cc3002ece05523191d884d3ad6523693fd43324dde"
 "checksum rocket_http 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "6ce8ca76247376ea21cf271af0f95e3f2014596e3e4c7cc04e44ee6242a40ff2"
+"checksum rppal 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)" = "137dbba1fb867daa27cda4c3cd6a11bca5bb5a1551f034cf9319b994846ddbe1"
 "checksum safemem 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ef703b7cb59335eae2eb93ceb664c0eb7ea6bf567079d843e09420219668e072"
 "checksum serde 1.0.106 (registry+https://github.com/rust-lang/crates.io-index)" = "36df6ac6412072f67cf767ebbde4133a5b2e88e76dc6187fa7104cd16f783399"
 "checksum serde_derive 1.0.106 (registry+https://github.com/rust-lang/crates.io-index)" = "9e549e3abf4fb8621bd1609f11dfc9f5e50320802273b12f3811a67e6716ea6c"
