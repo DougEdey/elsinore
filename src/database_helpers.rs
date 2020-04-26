@@ -30,7 +30,10 @@ fn read_brewery_name() -> String {
     if let Some('\r')=s.chars().next_back() {
         s.pop();
     }
-return s;
+    if s.len() == 0 {
+        s = "Elsinore".to_string();
+    }
+    return s;
 }
 
 pub fn get_brewery_name(connection: &SqliteConnection) -> Option<String> {
@@ -44,27 +47,27 @@ pub fn get_brewery_name(connection: &SqliteConnection) -> Option<String> {
         Ok(x) => if x.len() > 0 {
             bname = Some(x.last().cloned().unwrap());
         },
-    Err(x) => println!("Error: {:?}", x),
-}
+        Err(x) => println!("Error: {:?}", x),
+    }
 
-return bname;
+    return bname;
 }
 
 pub fn update_brewery_name(connection: &SqliteConnection, new_name: Option<String>) {
-use schema::settings::dsl::*;
-let new_brewery_name = match new_name {
-    Some(x) => x,
-    None => read_brewery_name(),
-};
+    use schema::settings::dsl::*;
+    let new_brewery_name = match new_name {
+        Some(x) => x,
+        None => read_brewery_name(),
+    };
 
-let rows_inserted = diesel::insert_into(settings)
-    .values(&brewery_name.eq(new_brewery_name)).execute(connection);
+    let rows_inserted = diesel::insert_into(settings)
+        .values(&brewery_name.eq(new_brewery_name)).execute(connection);
 
-if Ok(1) == rows_inserted {
-    println!("Updated!")
-} else {
-    println!("Failed to insert!");
-}
+    if Ok(1) == rows_inserted {
+        println!("Updated!")
+    } else {
+        println!("Failed to insert!");
+    }
 }
 
 #[cfg(test)]

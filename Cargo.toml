@@ -16,3 +16,4 @@ onewire = "0.3.13"
 embedded-hal = "0.2.3"
 libsqlite3-sys = { version = "0.17.3", features = ["bundled"] }
 rppal = { version = "0.11.3", features = ["hal", "hal-unproven"]}
+diesel_migrations = "1.4.0"
