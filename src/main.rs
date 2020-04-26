@@ -4,7 +4,6 @@
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate diesel_migrations;
 
-//#[cfg(all(feature = "sqlite", not(any(feature = "postgres", feature = "mysql"))))]
 embed_migrations!();
 
 pub mod models;
