@@ -28,6 +28,7 @@ fn main() {
     thread::spawn(|| {
         controls::pid_loop();
     });
+
     rocket::ignite().mount("/", routes![index]).launch();
 }
 
