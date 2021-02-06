@@ -1,2 +1,0 @@
-[target.arm-unknown-linux-gnueabihf]
-linker = "/home/doug/build-rpi/tools/arm-bcm2708/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
