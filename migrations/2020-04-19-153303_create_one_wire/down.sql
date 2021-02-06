@@ -1,1 +1,0 @@
-DROP TABLE one_wire_devices;
