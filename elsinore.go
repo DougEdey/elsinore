@@ -7,14 +7,27 @@ import (
 	"periph.io/x/periph/devices/ds18b20"
 	"periph.io/x/periph/experimental/host/netlink"
 	"periph.io/x/periph/host"
+	"periph.io/x/periph/conn/onewire"
 	// "periph.io/x/conn/v3/onewirereg"
 	// "periph.io/x/conn/v3/onewire"
 	// "periph.io/x/conn/v3/physic"
 	// "periph.io/x/devices/v3/ds18b20"
 )
 
-func readTemperatures(messages chan string) {
-	defer close(messages)
+func readAddresses(oneBus *netlink.OneWire, addresses []onewire.Address, messages chan string) {
+	for _, device := range addresses {
+		// init ds18b20
+		sensor, _ := ds18b20.New(oneBus, device, 10)
+
+		ds18b20.ConvertAll(oneBus, 10)
+		temp, _ := sensor.LastTemp()
+
+		messages <- fmt.Sprintf("Reading device %v: %v", device, temp)
+	}
+}
+
+func readTemperatures(m chan string) {
+	defer close(m)
 	fmt.Println("Reading temps.")
 	_, err := host.Init()
 	if err != nil {
@@ -37,17 +50,7 @@ func readTemperatures(messages chan string) {
 	for {
 		select {
 		case <- ticker.C:
-			// readAddresses(oneBus, addresses, m)
-			oneBus, _ := netlink.New(001)
-			for _, device := range addresses {
-				// init ds18b20
-				sensor, _ := ds18b20.New(oneBus, device, 10)
-		
-				ds18b20.ConvertAll(oneBus, 10)
-				temp, _ := sensor.LastTemp()
-		
-				messages <- fmt.Sprintf("Reading device %v: %v", device, temp)
-			}
+			readAddresses(oneBus, addresses, m)
 		case <- quit:
 			ticker.Stop()
 			fmt.Println("Stop")
