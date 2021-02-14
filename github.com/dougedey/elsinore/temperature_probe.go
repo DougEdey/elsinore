@@ -23,10 +23,12 @@ type TemperatureProbe struct {
 	Reading physic.Temperature `json:"reading"`
 }
 
-
-func GetTemperature(id string) *TemperatureProbe{
-	probe := probes[id]
-	log.Printf("Found probe for %v: %v\n", id, probe)
+/**
+	Get the temperature probe object for a physical address
+*/
+func GetTemperature(physAddr string) *TemperatureProbe{
+	probe := probes[physAddr]
+	log.Printf("Found probe for %v: %v\n", physAddr, probe)
 	return probe
 }
 
@@ -46,7 +48,9 @@ func ReadAddresses(oneBus *netlink.OneWire, messages chan string) {
 	}
 }
 
-
+/** ReadTemperatures
+ * Read the temperatures on an infinite ticker loop
+*/
 func ReadTemperatures(m chan string) {
 	defer close(m)
 	fmt.Println("Reading temps.")
