@@ -48,9 +48,7 @@ func ReadAddresses(oneBus *netlink.OneWire, messages chan string) {
 	}
 }
 
-/** ReadTemperatures
- * Read the temperatures on an infinite ticker loop
-*/
+/* ReadTemperatures Read the temperatures on an infinite ticker loop */
 func ReadTemperatures(m chan string) {
 	defer close(m)
 	fmt.Println("Reading temps.")
