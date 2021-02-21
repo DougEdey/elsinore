@@ -1,0 +1,19 @@
+on: [pull_request]
+name: Styles
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run gofmt
+        uses: Jerome1337/gofmt-action@v1.0.4
+        with:
+          gofmt-flags: "-l -d"
+  style:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run golint
+        uses: Jerome1337/golint-action@v1.0.2

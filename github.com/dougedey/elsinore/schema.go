@@ -11,6 +11,7 @@ import (
 var nodeDefinitions *relay.NodeDefinitions
 var temperatureProbe *graphql.Object
 
+// Schema is the generated GraphQL schema
 var Schema graphql.Schema
 
 func init() {
@@ -37,16 +38,16 @@ func init() {
 
 	// Define the basic temperature probe
 	temperatureProbe = graphql.NewObject(graphql.ObjectConfig{
-		Name: "TemperatureProbe",
+		Name:        "TemperatureProbe",
 		Description: "A device that reads a temperature",
 		Fields: graphql.Fields{
 			"id": relay.GlobalIDField("Temperature", nil),
-			"reading": &graphql.Field {
-				Type: graphql.String,
+			"reading": &graphql.Field{
+				Type:        graphql.String,
 				Description: "The value of the reading",
 			},
 			"physAddr": &graphql.Field{
-				Type: graphql.String,
+				Type:        graphql.String,
 				Description: "The physical address of this probe",
 			},
 		},
@@ -61,14 +62,14 @@ func init() {
 	* This implements
 	* type Query {
 	* 	probe: TemperatureProbe
-	* 	node(id: String!): Node 
+	* 	node(id: String!): Node
 	* }
-	*/  
-	
+	 */
+
 	queryType := graphql.NewObject(graphql.ObjectConfig{
 		Name: "Query",
-		Fields: graphql.Fields {
-			"probe": &graphql.Field {
+		Fields: graphql.Fields{
+			"probe": &graphql.Field{
 				Type: temperatureProbe,
 				Args: graphql.FieldConfigArgument{
 					"address": &graphql.ArgumentConfig{
@@ -80,7 +81,7 @@ func init() {
 						return GetTemperature(id), nil
 					}
 					return nil, nil
-					
+
 				},
 			},
 			"node": nodeDefinitions.NodeField,
@@ -93,5 +94,7 @@ func init() {
 		Query: queryType,
 	})
 
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 }

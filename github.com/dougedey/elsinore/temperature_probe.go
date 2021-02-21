@@ -17,24 +17,24 @@ import (
 
 var probes = make(map[string]*TemperatureProbe)
 
+// TemperatureProbe holds data that represents a physical temperature probe
+// PhysAddr -> The Hex address of the probe on the filesystem
+// Address -> The unsigned int value for the readings
+// Reading -> The actual reading as a Physic.Temperature
 type TemperatureProbe struct {
-	PhysAddr string `json:"physAddr"`
-	Address onewire.Address `json:"address"`
-	Reading physic.Temperature `json:"reading"`
+	PhysAddr string             `json:"physAddr"`
+	Address  onewire.Address    `json:"address"`
+	Reading  physic.Temperature `json:"reading"`
 }
 
-/**
-	Get the temperature probe object for a physical address
-*/
-func GetTemperature(physAddr string) *TemperatureProbe{
+// GetTemperature -> Get the probe object for a physical address
+func GetTemperature(physAddr string) *TemperatureProbe {
 	probe := probes[physAddr]
 	log.Printf("Found probe for %v: %v\n", physAddr, probe)
 	return probe
 }
 
-/*
-Reading hardware values
-*/
+// ReadAddresses -> Update the TemperatureProbes with the current value from the device
 func ReadAddresses(oneBus *netlink.OneWire, messages chan string) {
 	for _, probe := range probes {
 		// init ds18b20
@@ -48,7 +48,7 @@ func ReadAddresses(oneBus *netlink.OneWire, messages chan string) {
 	}
 }
 
-/* ReadTemperatures Read the temperatures on an infinite ticker loop */
+// ReadTemperatures Read the temperatures on an infinite ticker loop
 func ReadTemperatures(m chan string) {
 	defer close(m)
 	fmt.Println("Reading temps.")
@@ -62,7 +62,7 @@ func ReadTemperatures(m chan string) {
 		log.Printf("Could not open Netlink host: %v", err)
 	}
 	defer oneBus.Close()
-	
+
 	// get 1wire address
 	addresses, _ := oneBus.Search(false)
 	fmt.Printf("Reading temps from %v devices.\n", addresses)
@@ -81,7 +81,7 @@ func ReadTemperatures(m chan string) {
 		fmt.Printf("Found %v", physAddr)
 		probes[physAddr] = &TemperatureProbe{
 			PhysAddr: physAddr,
-			Address: address,
+			Address:  address,
 		}
 	}
 	ticker := time.NewTicker(5 * time.Second)
@@ -89,9 +89,9 @@ func ReadTemperatures(m chan string) {
 
 	for {
 		select {
-		case <- ticker.C:
+		case <-ticker.C:
 			ReadAddresses(oneBus, m)
-		case <- quit:
+		case <-quit:
 			ticker.Stop()
 			fmt.Println("Stop")
 			return
@@ -99,6 +99,7 @@ func ReadTemperatures(m chan string) {
 	}
 }
 
+// LogTemperatures -> Write the Temperatures to standard output
 func LogTemperatures(messages chan string) {
 	for {
 		for message := range messages {
