@@ -14,6 +14,7 @@ import (
 
 func main() {
 	portPtr := flag.String("port", "8080", "The port to listen on")
+	graphiqlFlag := flag.Bool("graphiql", true, "Disable GraphiQL web UI")
 	flag.Parse()
 
 	fmt.Println("Loaded and looking for temperatures")
@@ -28,13 +29,15 @@ func main() {
 		}),
 	)
 
-	http.Handle("/graphiql", handler.New(
-		&handler.Config{
-			Schema:   &elsinore.Schema,
-			GraphiQL: true,
-			Pretty:   true,
-		}),
-	)
+	if *graphiqlFlag {
+		http.Handle("/graphiql", handler.New(
+			&handler.Config{
+				Schema:   &elsinore.Schema,
+				GraphiQL: true,
+				Pretty:   true,
+			}),
+		)
+	}
 
 	fmt.Printf("Server on %v\n", *portPtr)
 	fullPort := fmt.Sprintf(":%v", *portPtr)
@@ -43,7 +46,10 @@ func main() {
 	if err != nil {
 		fmt.Printf("Failed to get hostname: %v\n", err)
 	} else {
-		fmt.Printf("http://%v%v/graphql \n", name, fullPort)
+		fmt.Printf("API Listening on: http://%v%v/graphql \n", name, fullPort)
+		if *graphiqlFlag {
+			fmt.Printf("GraphiQL interface: http://%v%v/graphiql \n", name, fullPort)
+		}
 	}
 	log.Fatal(http.ListenAndServe(fullPort, nil))
 }
