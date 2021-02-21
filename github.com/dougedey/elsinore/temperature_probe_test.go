@@ -16,7 +16,7 @@ func TestGetTemperature(t *testing.T) {
 	realAddress := "ARealAddress"
 	probes[realAddress] = &TemperatureProbe{
 		PhysAddr: realAddress,
-		Address: onewire.Address(12345),
+		Address:  onewire.Address(12345),
 	}
 
 	actualProbe := GetTemperature(realAddress)

@@ -10,14 +10,12 @@ import (
 	"net/http"
 )
 
-
 func main() {
 	fmt.Println("Loaded and looking for temperatures")
 	messages := make(chan string)
 	go elsinore.ReadTemperatures(messages)
 	go elsinore.LogTemperatures(messages)
-	
-	
+
 	http.Handle("/graphql", handler.New(
 		&handler.Config{
 			Schema: &elsinore.Schema,
@@ -27,12 +25,12 @@ func main() {
 
 	http.Handle("/graphiql", handler.New(
 		&handler.Config{
-			Schema: &elsinore.Schema,
+			Schema:   &elsinore.Schema,
 			GraphiQL: true,
-			Pretty: true,
+			Pretty:   true,
 		}),
 	)
-	
+
 	fmt.Println("Server on 8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
