@@ -1,8 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/dougedey/elsinore/github.com/dougedey/elsinore"
 	"github.com/graphql-go/handler"
@@ -11,6 +13,9 @@ import (
 )
 
 func main() {
+	portPtr := flag.String("port", "8080", "The port to listen on")
+	flag.Parse()
+
 	fmt.Println("Loaded and looking for temperatures")
 	messages := make(chan string)
 	go elsinore.ReadTemperatures(messages)
@@ -31,6 +36,14 @@ func main() {
 		}),
 	)
 
-	fmt.Println("Server on 8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	fmt.Printf("Server on %v\n", *portPtr)
+	fullPort := fmt.Sprintf(":%v", *portPtr)
+
+	name, err := os.Hostname()
+	if err != nil {
+		fmt.Printf("Failed to get hostname: %v\n", err)
+	} else {
+		fmt.Printf("http://%v%v/graphql \n", name, fullPort)
+	}
+	log.Fatal(http.ListenAndServe(fullPort, nil))
 }
