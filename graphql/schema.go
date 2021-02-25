@@ -83,7 +83,13 @@ func init() {
 						return devices.GetTemperature(id), nil
 					}
 					return nil, nil
-
+				},
+			},
+			"probeList": &graphql.Field{
+				Type:        graphql.NewList(graphql.String),
+				Description: "Get the list of device addresses",
+				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					return devices.GetAddresses(), nil
 				},
 			},
 			"node": nodeDefinitions.NodeField,

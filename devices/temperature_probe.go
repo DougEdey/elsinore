@@ -34,6 +34,17 @@ func GetTemperature(physAddr string) *TemperatureProbe {
 	return probe
 }
 
+// GetAddresses -> Get the list of available addresses
+func GetAddresses() []string {
+	keys := make([]string, len(probes))
+	i := 0
+	for k := range probes {
+		keys[i] = k
+		i++
+	}
+	return keys
+}
+
 // ReadAddresses -> Update the TemperatureProbes with the current value from the device
 func ReadAddresses(oneBus *netlink.OneWire, messages chan string) {
 	for _, probe := range probes {

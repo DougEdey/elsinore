@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/dougedey/elsinore/graphql"
 	"github.com/dougedey/elsinore/devices"
+	"github.com/dougedey/elsinore/graphql"
 
 	"github.com/graphql-go/handler"
 
