@@ -6,7 +6,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/dougedey/elsinore/github.com/dougedey/elsinore"
+	"github.com/dougedey/elsinore/graphql"
+	"github.com/dougedey/elsinore/devices"
+
 	"github.com/graphql-go/handler"
 
 	"net/http"
@@ -19,12 +21,12 @@ func main() {
 
 	fmt.Println("Loaded and looking for temperatures")
 	messages := make(chan string)
-	go elsinore.ReadTemperatures(messages)
-	go elsinore.LogTemperatures(messages)
+	go devices.ReadTemperatures(messages)
+	go devices.LogTemperatures(messages)
 
 	http.Handle("/graphql", handler.New(
 		&handler.Config{
-			Schema: &elsinore.Schema,
+			Schema: &graphql.Schema,
 			Pretty: true,
 		}),
 	)
@@ -32,7 +34,7 @@ func main() {
 	if *graphiqlFlag {
 		http.Handle("/graphiql", handler.New(
 			&handler.Config{
-				Schema:   &elsinore.Schema,
+				Schema:   &graphql.Schema,
 				GraphiQL: true,
 				Pretty:   true,
 			}),

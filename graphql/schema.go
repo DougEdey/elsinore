@@ -1,8 +1,10 @@
-package elsinore
+package graphql
 
 import (
 	"context"
 	"errors"
+
+	"github.com/dougedey/elsinore/devices"
 
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/relay"
@@ -21,14 +23,14 @@ func init() {
 
 			switch resolvedID.Type {
 			case "TemperatureProbe":
-				return GetTemperature(resolvedID.ID), nil
+				return devices.GetTemperature(resolvedID.ID), nil
 			default:
 				return nil, errors.New("Unknown node type")
 			}
 		},
 		TypeResolve: func(p graphql.ResolveTypeParams) *graphql.Object {
 			switch p.Value.(type) {
-			case *TemperatureProbe:
+			case *devices.TemperatureProbe:
 				return temperatureProbe
 			default:
 				return nil
@@ -78,7 +80,7 @@ func init() {
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					if id, ok := p.Args["address"].(string); ok {
-						return GetTemperature(id), nil
+						return devices.GetTemperature(id), nil
 					}
 					return nil, nil
 
