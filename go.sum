@@ -1,3 +1,4 @@
+github.com/DougEdey/elsinore v0.0.0-20210225111942-b8a20be6d4ef h1:Dtqmjdh+ZJ5KA33qPL+M5JIXTQmY9/y8PfbbBZIgqWY=
 github.com/graph-gophers/graphql-go v0.0.0-20201113091052-beb923fada29 h1:sezaKhEfPFg8W0Enm61B9Gs911H8iesGY5R8NDPtd1M=
 github.com/graph-gophers/graphql-go v0.0.0-20201113091052-beb923fada29/go.mod h1:9CQHMSxwO4MprSdzoIEobiHpoLtHm77vfxsvsIN5Vuc=
 github.com/graphql-go/graphql v0.7.9 h1:5Va/Rt4l5g3YjwDnid3vFfn43faaQBq7rMcIZ0VnV34=

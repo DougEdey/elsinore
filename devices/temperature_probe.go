@@ -1,4 +1,4 @@
-package elsinore
+package devices
 
 import (
 	"encoding/binary"
