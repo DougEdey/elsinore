@@ -39,7 +39,11 @@ func ReadAddresses(oneBus *netlink.OneWire, messages chan string) {
 	for _, probe := range probes {
 		// init ds18b20
 		sensor, _ := ds18b20.New(oneBus, probe.Address, 10)
-		ds18b20.ConvertAll(oneBus, 10)
+		err := ds18b20.ConvertAll(oneBus, 10)
+		if err != nil {
+			log.Printf("Failed to update probe %v: %v", probe.PhysAddr, err)
+		}
+
 		temp, _ := sensor.LastTemp()
 
 		probe := probes[probe.PhysAddr]
