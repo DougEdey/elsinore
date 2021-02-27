@@ -24,12 +24,12 @@ func main() {
 	go devices.ReadTemperatures(messages)
 	go devices.LogTemperatures(messages)
 
-	http.Handle("/graphql", handler.New(
+	http.Handle("/graphql", CorsMiddleware(handler.New(
 		&handler.Config{
 			Schema: &graphql.Schema,
 			Pretty: true,
 		}),
-	)
+	))
 
 	if *graphiqlFlag {
 		http.Handle("/graphiql", handler.New(
@@ -48,10 +48,25 @@ func main() {
 	if err != nil {
 		fmt.Printf("Failed to get hostname: %v\n", err)
 	} else {
-		fmt.Printf("API Listening on: http://%v%v/graphql \n", name, fullPort)
+		fmt.Printf("CORS API Listening on: http://%v%v/graphql \n", name, fullPort)
 		if *graphiqlFlag {
 			fmt.Printf("GraphiQL interface: http://%v%v/graphiql \n", name, fullPort)
 		}
 	}
 	log.Fatal(http.ListenAndServe(fullPort, nil))
+}
+
+// CorsMiddleware used to allow all origins to access the GraphQL API
+func CorsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// allow cross domain AJAX requests
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST,OPTIONS")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
