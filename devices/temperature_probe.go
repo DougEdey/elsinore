@@ -53,9 +53,14 @@ func ReadAddresses(oneBus *netlink.OneWire, messages chan string) {
 		err := ds18b20.ConvertAll(oneBus, 10)
 		if err != nil {
 			log.Printf("Failed to update probe %v: %v", probe.PhysAddr, err)
+			continue
 		}
 
-		temp, _ := sensor.LastTemp()
+		temp, err := sensor.LastTemp()
+		if err != nil {
+			log.Printf("Failed to get the last temp for %v: %v", probe.PhysAddr, err)
+			continue
+		}
 
 		probe := probes[probe.PhysAddr]
 		probe.Reading = temp
@@ -121,6 +126,11 @@ func LogTemperatures(messages chan string) {
 			fmt.Println(message)
 		}
 	}
+}
+
+// SetProbe -> Used to set a probe in the master list
+func SetProbe(probe *TemperatureProbe) {
+	probes[probe.PhysAddr] = probe
 }
 
 func reverse(arr []byte) []byte {

@@ -1,8 +1,7 @@
-package graphql
+package api
 
 import (
-	"context"
-	"errors"
+	"fmt"
 
 	"github.com/dougedey/elsinore/devices"
 
@@ -10,34 +9,12 @@ import (
 	"github.com/graphql-go/relay"
 )
 
-var nodeDefinitions *relay.NodeDefinitions
 var temperatureProbe *graphql.Object
 
 // Schema is the generated GraphQL schema
 var Schema graphql.Schema
 
 func init() {
-	nodeDefinitions = relay.NewNodeDefinitions(relay.NodeDefinitionsConfig{
-		IDFetcher: func(id string, info graphql.ResolveInfo, ctx context.Context) (interface{}, error) {
-			resolvedID := relay.FromGlobalID(id)
-
-			switch resolvedID.Type {
-			case "TemperatureProbe":
-				return devices.GetTemperature(resolvedID.ID), nil
-			default:
-				return nil, errors.New("Unknown node type")
-			}
-		},
-		TypeResolve: func(p graphql.ResolveTypeParams) *graphql.Object {
-			switch p.Value.(type) {
-			case *devices.TemperatureProbe:
-				return temperatureProbe
-			default:
-				return nil
-			}
-		},
-	})
-
 	// Define the basic temperature probe
 	temperatureProbe = graphql.NewObject(graphql.ObjectConfig{
 		Name:        "TemperatureProbe",
@@ -52,9 +29,6 @@ func init() {
 				Type:        graphql.String,
 				Description: "The physical address of this probe",
 			},
-		},
-		Interfaces: []*graphql.Interface{
-			nodeDefinitions.NodeInterface,
 		},
 	})
 
@@ -80,9 +54,12 @@ func init() {
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					if id, ok := p.Args["address"].(string); ok {
-						return devices.GetTemperature(id), nil
+						device := devices.GetTemperature(id)
+						if device != nil {
+							return device, nil
+						}
 					}
-					return nil, nil
+					return nil, fmt.Errorf("No device found for address %v", p.Args["address"])
 				},
 			},
 			"probeList": &graphql.Field{
@@ -92,7 +69,6 @@ func init() {
 					return devices.GetAddresses(), nil
 				},
 			},
-			"node": nodeDefinitions.NodeField,
 		},
 	})
 
