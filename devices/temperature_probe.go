@@ -30,7 +30,9 @@ type TemperatureProbe struct {
 // GetTemperature -> Get the probe object for a physical address
 func GetTemperature(physAddr string) *TemperatureProbe {
 	probe := probes[physAddr]
-	log.Printf("Found probe for %v: %v\n", physAddr, probe)
+	if probe != nil {
+		log.Printf("Found probe for %v: %v\n", physAddr, probe)
+	}
 	return probe
 }
 
