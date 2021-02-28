@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/dougedey/elsinore/api"
 	"github.com/dougedey/elsinore/devices"
-	"github.com/dougedey/elsinore/graphql"
 
 	"github.com/graphql-go/handler"
 
@@ -26,7 +26,7 @@ func main() {
 
 	http.Handle("/graphql", CorsMiddleware(handler.New(
 		&handler.Config{
-			Schema: &graphql.Schema,
+			Schema: &api.Schema,
 			Pretty: true,
 		}),
 	))
@@ -34,7 +34,7 @@ func main() {
 	if *graphiqlFlag {
 		http.Handle("/graphiql", handler.New(
 			&handler.Config{
-				Schema:   &graphql.Schema,
+				Schema:   &api.Schema,
 				GraphiQL: true,
 				Pretty:   true,
 			}),

@@ -7,3 +7,6 @@
 # ignore Go builds directory
 /builds
 elsinore
+
+# IDE Stuff
+.vscode
