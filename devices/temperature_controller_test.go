@@ -22,9 +22,13 @@ func TestCreateTemperatureController(t *testing.T) {
 		if temperatureController == nil {
 			t.Fatalf("No Pid Controller returned for sample")
 		}
+
+		if temperatureController.Name != "sample" {
+			t.Fatalf("Expected the temperature controller to be called sample, but got %v", temperatureController.Name)
+		}
 	})
 
-	t.Run("A Tenoeraryre controller cannot be created if the probe is already associated with a controller", func(t *testing.T) {
+	t.Run("A Temperature controller cannot be created if the probe is already associated with a controller", func(t *testing.T) {
 		temperatureController, err := devices.CreateTemperatureController("sample_2", probe)
 
 		if err == nil {

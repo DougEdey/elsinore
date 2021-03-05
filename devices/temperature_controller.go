@@ -14,20 +14,34 @@ var controllers = make(map[string]*TemperatureController)
 
 // TemperatureController defines a mapping of temperature probes to their control settings
 type TemperatureController struct {
+	Name              string
 	LastReadings      map[time.Time]physic.Temperature
 	TemperatureProbes []TemperatureProbe
-	CoolSettings 			PidSettings
-	HeatSettings 			PidSettings
-	Mode							string				// Mode of this controller
+	CoolSettings      PidSettings
+	HeatSettings      PidSettings
+	HysteriaSettings  HysteriaSettings
+	Mode              string // Mode of this controller
+	DutyCycle         big.Int
+	CalculatedDuty    big.Int
+	SetPoint          physic.Temperature
+	ManualDuty        big.Int
+	ManualTime        big.Int
 }
 
 // PidSettings define the actual values for heating/cooling as persisted
 type PidSettings struct {
-	Proportional      big.Float
-	Integral          big.Float
-	Differential      big.Float
-	CycleTime					big.Int
-	Delay							big.Int
+	Proportional big.Float
+	Integral     big.Float
+	Differential big.Float
+	CycleTime    big.Int
+	Delay        big.Int
+}
+
+// HysteriaSettings are used for Hysteria mode
+type HysteriaSettings struct {
+	MaxTemp physic.Temperature
+	MinTemp physic.Temperature
+	MinTime big.Int
 }
 
 // FindTemperatureControllerForProbe returns the pid controller associated with the TemperatureProbe
@@ -68,7 +82,7 @@ func CreateTemperatureController(name string, probe TemperatureProbe) (*Temperat
 	}
 
 	if controller == nil {
-		controller = &TemperatureController{}
+		controller = &TemperatureController{Name: name}
 		controllers[name] = controller
 	}
 
