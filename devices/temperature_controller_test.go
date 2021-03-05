@@ -1,6 +1,7 @@
 package devices_test
 
 import (
+	"log"
 	"testing"
 
 	"github.com/dougedey/elsinore/devices"
@@ -66,7 +67,9 @@ func TestTemperatureControllerAverageTemperature(t *testing.T) {
 	}
 
 	t.Run("With a single probe, you get the current value", func(t *testing.T) {
-		probe.UpdateTemperature("35C")
+		err = probe.UpdateTemperature("35C"); if err != nil {
+			log.Fatalf("Failed to update %v", err)
+		}
 		avgTemperature := temperatureController.AverageTemperature()
 		if float64(35.0) != avgTemperature.Celsius() {
 			t.Fatalf("Expected %v, but got %v", probe.Reading, avgTemperature)
@@ -79,11 +82,15 @@ func TestTemperatureControllerAverageTemperature(t *testing.T) {
 			Address:  onewire.Address(123456),
 			Reading:  physic.Temperature(0),
 		}
-		devices.CreateTemperatureController("sample", &probe_two)
+		_, err = devices.CreateTemperatureController("sample", &probe_two); if err != nil {
+			log.Fatalf("Failed to create %v", err)
+		}
 
 		// probe.Reading = new(physic.Temperature)
 		// probe.Reading.Set("35C")
-		probe_two.UpdateTemperature("37C")
+		err = probe_two.UpdateTemperature("37C"); if err != nil {
+			log.Fatalf("Failed to update %v", err)
+		}
 
 		avgTemperature := temperatureController.AverageTemperature()
 		if float64(36.0) != avgTemperature.Celsius() {
