@@ -25,6 +25,12 @@ type TemperatureProbe struct {
 	PhysAddr string             `json:"physAddr"`
 	Address  onewire.Address    `json:"address"`
 	Reading  physic.Temperature `json:"reading"`
+	Updated  time.Time          `json:"updatedAt"`
+}
+
+// UpdateTemperature Set the temperature on the Temperature Probe from a string
+func (t *TemperatureProbe) UpdateTemperature(newTemp string) error {
+	return t.Reading.Set(newTemp)
 }
 
 // GetTemperature -> Get the probe object for a physical address
@@ -65,6 +71,7 @@ func ReadAddresses(oneBus *netlink.OneWire, messages chan string) {
 		}
 
 		probe := probes[probe.PhysAddr]
+		probe.Updated = time.Now()
 		probe.Reading = temp
 		messages <- fmt.Sprintf("Reading device %v: %v", probe.PhysAddr, temp)
 	}
