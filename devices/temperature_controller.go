@@ -3,19 +3,18 @@ package devices
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"periph.io/x/periph/conn/physic"
 
 	"math/big"
 )
 
-var controllers = make(map[string]*TemperatureController)
+var controllers []*TemperatureController
 
 // TemperatureController defines a mapping of temperature probes to their control settings
 type TemperatureController struct {
 	Name              string
-	LastReadings      map[time.Time]physic.Temperature
+	LastReadings      []physic.Temperature
 	TemperatureProbes []*TemperatureProbe
 	CoolSettings      PidSettings
 	HeatSettings      PidSettings
@@ -58,16 +57,17 @@ func FindTemperatureControllerForProbe(physAddr string) *TemperatureController {
 
 // FindTemperatureControllerByName returns the pid controller with a specific name
 func FindTemperatureControllerByName(name string) *TemperatureController {
-	controller := controllers[name]
-	if controller != nil {
-		log.Printf("Found PID Controller for %v: %v", name, controller)
+	for i := range controllers {
+		if controllers[i].Name == name {
+			return controllers[i]
+		}
 	}
-	return controller
+	return nil
 }
 
 // ClearControllers reset the map of controllers
 func ClearControllers() {
-	controllers = make(map[string]*TemperatureController)
+	controllers = nil
 }
 
 // CreateTemperatureController Create a new PID controller for the Temperature probe
@@ -88,7 +88,7 @@ func CreateTemperatureController(name string, probe *TemperatureProbe) (*Tempera
 
 	if controller == nil {
 		controller = &TemperatureController{Name: name}
-		controllers[name] = controller
+		controllers = append(controllers, controller)
 	}
 
 	controller.TemperatureProbes = append(controller.TemperatureProbes, probe)
@@ -98,16 +98,10 @@ func CreateTemperatureController(name string, probe *TemperatureProbe) (*Tempera
 // UpdateOutput updates the temperatures and decides how to control the outputs
 func (c *TemperatureController) UpdateOutput() {
 	if len(c.LastReadings) >= 5 {
-		var oldestKey *time.Time
-		for key := range c.LastReadings {
-			if oldestKey == nil || key.Before(*oldestKey) {
-				oldestKey = &key
-			}
-		}
-		delete(c.LastReadings, *oldestKey)
+		c.LastReadings = c.LastReadings[1:5]
 	}
 	averageTemp := c.AverageTemperature()
-	c.LastReadings[time.Now()] = averageTemp
+	c.LastReadings = append(c.LastReadings, averageTemp)
 }
 
 // AverageTemperature Calculate the average temperature for a temperature controller over all the probes
