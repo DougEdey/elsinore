@@ -2,7 +2,9 @@ package devices_test
 
 import (
 	"log"
+	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/dougedey/elsinore/devices"
 	"periph.io/x/periph/conn/onewire"
@@ -169,4 +171,116 @@ func TestTemperatureControllerUpdateOutput(t *testing.T) {
 			t.Fatalf("Expected %v to not be the same as the deleted value!", temperatureController.LastReadings[0])
 		}
 	})
+}
+
+func TestTemperatureControllerCalculate(t *testing.T) {
+	devices.ClearControllers()
+	rand.Seed(time.Now().UnixNano())
+
+	stubNow := func() time.Time { return time.Unix(1615715366, 0) }
+
+	probe := devices.TemperatureProbe{
+		PhysAddr: "ARealAddress",
+		Address:  onewire.Address(12345),
+		Reading:  physic.Temperature(0),
+	}
+	err := probe.UpdateTemperature("35C")
+	if err != nil {
+		log.Fatalf("Failed to update %v", err)
+	}
+	temperatureController, err := devices.CreateTemperatureController("sample", &probe)
+
+	if err != nil {
+		t.Fatalf("Failed to create the controller: %v", err)
+	}
+
+	t.Run("Calculate sets the PreviousCalculationTime on first run and returns the current duty cycle", func(t *testing.T) {
+		temperatureController.UpdateOutput()
+		var output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNow)
+		if output != 0 {
+			t.Fatalf("Expected output to be %v, but got %v", 0, output)
+		}
+		if temperatureController.PreviousCalculationTime != stubNow() {
+			t.Fatalf("Expected previous calculation time to be %v, but got %v", stubNow(), temperatureController.PreviousCalculationTime)
+		}
+	})
+
+	t.Run("Calculate does not update anything if the current time is under 100ms ahead", func(t *testing.T) {
+		temperatureController.UpdateOutput()
+		stubNext := func() time.Time { return time.Unix(1615715366, int64(rand.Intn(100)*1_000_000)) }
+		var output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNext)
+		if output != 0 {
+			t.Fatalf("Expected output to be %v, but got %v", 0, output)
+		}
+		if temperatureController.PreviousCalculationTime != stubNow() {
+			t.Fatalf("Expected previous calculation time to be %v, but got %v", stubNow(), temperatureController.PreviousCalculationTime)
+		}
+	})
+
+	t.Run("Calculate updates previous time when the difference is over 100ms", func(t *testing.T) {
+		offset := int64(rand.Intn(100)+100) * 1_000_000
+		stubNext := func() time.Time { return time.Unix(1615715366, offset) }
+		var output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNext)
+		if output != 0 {
+			t.Fatalf("Expected output to be %v, but got %v", 0, output)
+		}
+		if temperatureController.PreviousCalculationTime != stubNext() {
+			t.Fatalf("Expected previous calculation time to be %v, but got %v", stubNext(), temperatureController.PreviousCalculationTime)
+		}
+	})
+
+	t.Run("Calculate uses proportional value when set", func(t *testing.T) {
+		temperatureController.HeatSettings.Proportional = 10
+		temperatureController.PreviousCalculationTime = stubNow()
+		temperatureController.SetPoint.Set("36C")
+		offset := int64(rand.Intn(100)+100) * 1_000_000
+		stubNext := func() time.Time { return time.Unix(1615715366, offset) }
+		var output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNext)
+		if output != 18 {
+			t.Fatalf("Expected output to be %v, but got %v", 18, output)
+		}
+		if temperatureController.PreviousCalculationTime != stubNext() {
+			t.Fatalf("Expected previous calculation time to be %v, but got %v", stubNext(), temperatureController.PreviousCalculationTime)
+		}
+	})
+
+	t.Run("Calculate uses proportional value when set with a large delta caps to 100", func(t *testing.T) {
+		temperatureController.HeatSettings.Proportional = 10
+		temperatureController.PreviousCalculationTime = stubNow()
+		temperatureController.SetPoint.Set("100C")
+		offset := int64(rand.Intn(100)+100) * 1_000_000
+		stubNext := func() time.Time { return time.Unix(1615715366, offset) }
+		var output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNext)
+		if output != 100 {
+			t.Fatalf("Expected output to be %v, but got %v", 100, output)
+		}
+		if temperatureController.PreviousCalculationTime != stubNext() {
+			t.Fatalf("Expected previous calculation time to be %v, but got %v", stubNext(), temperatureController.PreviousCalculationTime)
+		}
+	})
+
+	t.Run("Calculate uses proportional and integral values when set", func(t *testing.T) {
+		temperatureController.HeatSettings.Proportional = 10
+		temperatureController.HeatSettings.Integral = 0
+		temperatureController.PreviousCalculationTime = stubNow()
+		temperatureController.SetPoint.Set("36C")
+		offset := int64((101 + 100) * 1_000_000)
+		stubNext := func() time.Time { return time.Unix(1615715366, offset) }
+		var output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNext)
+		if output != 18 {
+			t.Fatalf("Expected output to be %v, but got %v", 18, output)
+		}
+
+		temperatureController.TotalDiff = 0
+		temperatureController.HeatSettings.Integral = 0.1
+		stubNext = func() time.Time { return time.Unix(1615715366, offset*2) }
+		output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNext)
+		if output != 54 {
+			t.Fatalf("Expected output to be %v, but got %v", 54, output)
+		}
+		if temperatureController.PreviousCalculationTime != stubNext() {
+			t.Fatalf("Expected previous calculation time to be %v, but got %v", stubNext(), temperatureController.PreviousCalculationTime)
+		}
+	})
+
 }

@@ -3,44 +3,49 @@ package devices
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"periph.io/x/periph/conn/physic"
-
-	"math/big"
 )
 
 var controllers []*TemperatureController
 
 // TemperatureController defines a mapping of temperature probes to their control settings
 type TemperatureController struct {
-	Name              string
-	LastReadings      []physic.Temperature
-	TemperatureProbes []*TemperatureProbe
-	CoolSettings      PidSettings
-	HeatSettings      PidSettings
-	HysteriaSettings  HysteriaSettings
-	Mode              string // Mode of this controller
-	DutyCycle         big.Int
-	CalculatedDuty    big.Int
-	SetPoint          physic.Temperature
-	ManualDuty        big.Int
-	ManualTime        big.Int
+	Name                    string
+	LastReadings            []physic.Temperature
+	TemperatureProbes       []*TemperatureProbe
+	CoolSettings            PidSettings
+	HeatSettings            PidSettings
+	HysteriaSettings        HysteriaSettings
+	Mode                    string // Mode of this controller
+	DutyCycle               int64
+	CalculatedDuty          int64
+	SetPoint                physic.Temperature
+	ManualDuty              int64
+	ManualTime              int64
+	PreviousCalculationTime time.Time
+	TotalDiff               float64 // Always in Fahrenheit (internal calculation)
+	integralError           float64
+	derivativeFactor        float64
+	prevDiff                float64 // Always in Fahrenheit (internal calculaiton)
 }
 
 // PidSettings define the actual values for heating/cooling as persisted
 type PidSettings struct {
-	Proportional big.Float
-	Integral     big.Float
-	Differential big.Float
-	CycleTime    big.Int
-	Delay        big.Int
+	Proportional float64
+	Integral     float64
+	Derivative   float64
+	CycleTime    int64
+	Delay        int64
+	Configured   bool
 }
 
 // HysteriaSettings are used for Hysteria mode
 type HysteriaSettings struct {
 	MaxTemp physic.Temperature
 	MinTemp physic.Temperature
-	MinTime big.Int
+	MinTime int64 // In seconds
 }
 
 // FindTemperatureControllerForProbe returns the pid controller associated with the TemperatureProbe
@@ -87,7 +92,7 @@ func CreateTemperatureController(name string, probe *TemperatureProbe) (*Tempera
 	}
 
 	if controller == nil {
-		controller = &TemperatureController{Name: name}
+		controller = &TemperatureController{Name: name, TotalDiff: 0, integralError: 0, derivativeFactor: 0, prevDiff: 0}
 		controllers = append(controllers, controller)
 	}
 
@@ -102,6 +107,14 @@ func (c *TemperatureController) UpdateOutput() {
 	}
 	averageTemp := c.AverageTemperature()
 	c.LastReadings = append(c.LastReadings, averageTemp)
+	switch c.Mode {
+	case "auto":
+		c.CalculatedDuty = c.Calculate(averageTemp, nil)
+	case "manual":
+	case "off":
+	case "hysteria":
+
+	}
 }
 
 // AverageTemperature Calculate the average temperature for a temperature controller over all the probes
@@ -113,4 +126,41 @@ func (c *TemperatureController) AverageTemperature() physic.Temperature {
 	}
 
 	return (physic.Temperature)(totalTemp / (int64)(len(c.TemperatureProbes)))
+}
+
+// Calculate does the calculation for the probe
+func (c *TemperatureController) Calculate(averageTemperature physic.Temperature, now func() time.Time) int64 {
+	if now == nil {
+		now = time.Now
+	}
+	calculationTime := now()
+
+	if (c.PreviousCalculationTime == time.Time{}) {
+		c.PreviousCalculationTime = calculationTime
+		return c.DutyCycle
+	}
+
+	delta := calculationTime.Sub(c.PreviousCalculationTime)
+	// only caculate updates if we're over 100ms (0.1s)
+	if delta.Milliseconds() < 100 {
+		return c.DutyCycle
+	}
+
+	var targetDiff = c.SetPoint.Fahrenheit() - averageTemperature.Fahrenheit()
+	var msDiff = float64(delta.Milliseconds())
+	c.TotalDiff = (c.TotalDiff + targetDiff) * msDiff
+	var currErr = (targetDiff - c.prevDiff) / msDiff
+
+	var output = (c.HeatSettings.Proportional * targetDiff) +
+		(c.HeatSettings.Integral * c.TotalDiff) +
+		(c.HeatSettings.Derivative * currErr)
+
+	c.prevDiff = targetDiff
+	c.PreviousCalculationTime = calculationTime
+	if output > 100 {
+		output = 100
+	} else if output < 0 {
+		output = 0
+	}
+	return int64(output)
 }
