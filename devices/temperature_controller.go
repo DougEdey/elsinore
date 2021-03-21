@@ -18,12 +18,11 @@ type TemperatureController struct {
 	CoolSettings            PidSettings
 	HeatSettings            PidSettings
 	HysteriaSettings        HysteriaSettings
+	ManualSettings          ManualSettings
 	Mode                    string // Mode of this controller
 	DutyCycle               int64
 	CalculatedDuty          int64
 	SetPoint                physic.Temperature
-	ManualDuty              int64
-	ManualTime              int64
 	PreviousCalculationTime time.Time
 	TotalDiff               float64 // Always in Fahrenheit (internal calculation)
 	integralError           float64
@@ -43,9 +42,16 @@ type PidSettings struct {
 
 // HysteriaSettings are used for Hysteria mode
 type HysteriaSettings struct {
-	MaxTemp physic.Temperature
-	MinTemp physic.Temperature
-	MinTime int64 // In seconds
+	MaxTemp    physic.Temperature
+	MinTemp    physic.Temperature
+	MinTime    int64 // In seconds
+	Configured bool
+}
+
+type ManualSettings struct {
+	DutyCycle  int64
+	CycleTime  int64
+	Configured bool
 }
 
 // FindTemperatureControllerForProbe returns the pid controller associated with the TemperatureProbe
