@@ -22,15 +22,19 @@ var probes = make(map[string]*TemperatureProbe)
 // Address -> The unsigned int value for the readings
 // Reading -> The actual reading as a Physic.Temperature
 type TemperatureProbe struct {
-	PhysAddr string             `json:"physAddr"`
-	Address  onewire.Address    `json:"address"`
-	Reading  physic.Temperature `json:"reading"`
-	Updated  time.Time          `json:"updatedAt"`
+	PhysAddr   string          `json:"physAddr"`
+	Address    onewire.Address `json:"address"`
+	ReadingRaw physic.Temperature
+	Updated    time.Time `json:"updatedAt"`
 }
 
 // UpdateTemperature Set the temperature on the Temperature Probe from a string
 func (t *TemperatureProbe) UpdateTemperature(newTemp string) error {
-	return t.Reading.Set(newTemp)
+	return t.ReadingRaw.Set(newTemp)
+}
+
+func (t *TemperatureProbe) Reading() string {
+	return t.ReadingRaw.String()
 }
 
 // GetTemperature -> Get the probe object for a physical address
@@ -43,11 +47,11 @@ func GetTemperature(physAddr string) *TemperatureProbe {
 }
 
 // GetAddresses -> Get the list of available addresses
-func GetAddresses() []string {
-	keys := make([]string, len(probes))
+func GetAddresses() []*string {
+	keys := make([]*string, len(probes))
 	i := 0
 	for k := range probes {
-		keys[i] = k
+		keys[i] = &k
 		i++
 	}
 	return keys
@@ -72,7 +76,7 @@ func ReadAddresses(oneBus *netlink.OneWire, messages chan string) {
 
 		probe := probes[probe.PhysAddr]
 		probe.Updated = time.Now()
-		probe.Reading = temp
+		probe.ReadingRaw = temp
 		messages <- fmt.Sprintf("Reading device %v: %v", probe.PhysAddr, temp)
 	}
 }

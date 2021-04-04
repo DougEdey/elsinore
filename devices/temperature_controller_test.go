@@ -82,9 +82,9 @@ func TestCreateTemperatureController(t *testing.T) {
 func TestTemperatureControllerAverageTemperature(t *testing.T) {
 	devices.ClearControllers()
 	probe := devices.TemperatureProbe{
-		PhysAddr: "ARealAddress",
-		Address:  onewire.Address(12345),
-		Reading:  physic.Temperature(0),
+		PhysAddr:   "ARealAddress",
+		Address:    onewire.Address(12345),
+		ReadingRaw: physic.Temperature(0),
 	}
 	temperatureController, err := devices.CreateTemperatureController("sample", &probe)
 
@@ -99,15 +99,15 @@ func TestTemperatureControllerAverageTemperature(t *testing.T) {
 		}
 		avgTemperature := temperatureController.AverageTemperature()
 		if float64(35.0) != avgTemperature.Celsius() {
-			t.Fatalf("Expected %v, but got %v", probe.Reading, avgTemperature)
+			t.Fatalf("Expected %v, but got %v", probe.ReadingRaw, avgTemperature)
 		}
 	})
 
 	t.Run("With multiple probes, you get an average value", func(t *testing.T) {
 		probe_two := devices.TemperatureProbe{
-			PhysAddr: "AnotherRealAddress",
-			Address:  onewire.Address(123456),
-			Reading:  physic.Temperature(0),
+			PhysAddr:   "AnotherRealAddress",
+			Address:    onewire.Address(123456),
+			ReadingRaw: physic.Temperature(0),
 		}
 		_, err = devices.CreateTemperatureController("sample", &probe_two)
 		if err != nil {
@@ -132,9 +132,9 @@ func TestTemperatureControllerUpdateOutput(t *testing.T) {
 	devices.ClearControllers()
 
 	probe := devices.TemperatureProbe{
-		PhysAddr: "ARealAddress",
-		Address:  onewire.Address(12345),
-		Reading:  physic.Temperature(0),
+		PhysAddr:   "ARealAddress",
+		Address:    onewire.Address(12345),
+		ReadingRaw: physic.Temperature(0),
 	}
 	err := probe.UpdateTemperature("35C")
 	if err != nil {
@@ -180,9 +180,9 @@ func TestTemperatureControllerCalculate(t *testing.T) {
 	stubNow := func() time.Time { return time.Unix(1615715366, 0) }
 
 	probe := devices.TemperatureProbe{
-		PhysAddr: "ARealAddress",
-		Address:  onewire.Address(12345),
-		Reading:  physic.Temperature(0),
+		PhysAddr:   "ARealAddress",
+		Address:    onewire.Address(12345),
+		ReadingRaw: physic.Temperature(0),
 	}
 	err := probe.UpdateTemperature("35C")
 	if err != nil {
@@ -232,7 +232,7 @@ func TestTemperatureControllerCalculate(t *testing.T) {
 	t.Run("Calculate uses proportional value when set", func(t *testing.T) {
 		temperatureController.HeatSettings.Proportional = 10
 		temperatureController.PreviousCalculationTime = stubNow()
-		temperatureController.SetPoint.Set("36C")
+		temperatureController.SetPointRaw.Set("36C")
 		offset := int64(rand.Intn(100)+100) * 1_000_000
 		stubNext := func() time.Time { return time.Unix(1615715366, offset) }
 		var output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNext)
@@ -247,7 +247,7 @@ func TestTemperatureControllerCalculate(t *testing.T) {
 	t.Run("Calculate uses proportional value when set with a large delta caps to 100", func(t *testing.T) {
 		temperatureController.HeatSettings.Proportional = 10
 		temperatureController.PreviousCalculationTime = stubNow()
-		temperatureController.SetPoint.Set("100C")
+		temperatureController.SetPointRaw.Set("100C")
 		offset := int64(rand.Intn(100)+100) * 1_000_000
 		stubNext := func() time.Time { return time.Unix(1615715366, offset) }
 		var output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNext)
@@ -263,7 +263,7 @@ func TestTemperatureControllerCalculate(t *testing.T) {
 		temperatureController.HeatSettings.Proportional = 10
 		temperatureController.HeatSettings.Integral = 0
 		temperatureController.PreviousCalculationTime = stubNow()
-		temperatureController.SetPoint.Set("36C")
+		temperatureController.SetPointRaw.Set("36C")
 		offset := int64((101 + 100) * 1_000_000)
 		stubNext := func() time.Time { return time.Unix(1615715366, offset) }
 		var output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNext)
