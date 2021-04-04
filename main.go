@@ -6,10 +6,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/dougedey/elsinore/api"
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/dougedey/elsinore/devices"
-
-	"github.com/graphql-go/handler"
+	"github.com/dougedey/elsinore/graph"
+	"github.com/dougedey/elsinore/graph/generated"
 
 	"net/http"
 )
@@ -24,22 +25,15 @@ func main() {
 	go devices.ReadTemperatures(messages)
 	go devices.LogTemperatures(messages)
 
-	http.Handle("/graphql", CorsMiddleware(handler.New(
-		&handler.Config{
-			Schema: &api.Schema,
-			Pretty: true,
-		}),
-	))
+	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
 
 	if *graphiqlFlag {
-		http.Handle("/graphiql", handler.New(
-			&handler.Config{
-				Schema:   &api.Schema,
-				GraphiQL: true,
-				Pretty:   true,
-			}),
-		)
+		http.Handle("/", playground.Handler("GraphQL playground", "/query"))
+		log.Printf("connect to http://localhost:%s/ for GraphQL playground", *portPtr)
 	}
+	http.Handle("/query", srv)
+
+	log.Fatal(http.ListenAndServe(":"+*portPtr, nil))
 
 	fmt.Printf("Server on %v\n", *portPtr)
 	fullPort := fmt.Sprintf(":%v", *portPtr)
@@ -53,20 +47,4 @@ func main() {
 			fmt.Printf("GraphiQL interface: http://%v%v/graphiql \n", name, fullPort)
 		}
 	}
-	log.Fatal(http.ListenAndServe(fullPort, nil))
-}
-
-// CorsMiddleware used to allow all origins to access the GraphQL API
-func CorsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// allow cross domain AJAX requests
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST,OPTIONS")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
 }

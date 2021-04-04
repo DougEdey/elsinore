@@ -13,10 +13,7 @@ enum ControllerMode {
   hysteria
 }
 
-"""
-The `DateTime` scalar type represents a DateTime. The DateTime is serialized as an RFC 3339 quoted string
-"""
-scalar DateTime
+scalar Time
 
 """The settings for hysteria mode"""
 type HysteriaSettings {
@@ -27,10 +24,10 @@ type HysteriaSettings {
   id: ID!
 
   """When this temperature is hit, turn on the cooling output"""
-  maxTemp: Float
+  maxTemp: String
 
   """When this temperature is hit, turn on the heating output"""
-  minTemp: Float
+  minTemp: String
 
   """The minimum amount of time to turn the outputs on for."""
   minTime: Int
@@ -56,7 +53,7 @@ type Mutation {
 }
 
 """The settings for heating or cooling on a temperature controller"""
-type PIDSettings {
+type PidSettings {
   """Indicates if these settings have been configured yet"""
   configured: Boolean
 
@@ -66,8 +63,8 @@ type PIDSettings {
   """The minimum delay between turning an output on and off in seconds"""
   delay: Int
 
-  """The differental calculation value"""
-  differential: Float
+  """The derivative calculation value"""
+  derivative: Float
 
   """The ID of an object"""
   id: ID!
@@ -102,13 +99,13 @@ type TemperatureController {
   calculatedDuty: Int
 
   """The cooling settings for this controller"""
-  coolSettings: PIDSettings
+  coolSettings: PidSettings
 
   """The percentage of time this controller is on"""
   dutyCycle: Int
 
   """The heating settings for this controller"""
-  heatSettings: PIDSettings
+  heatSettings: PidSettings
 
   """The hysteria mode settings for this controller"""
   hysteriaSettings: HysteriaSettings
@@ -126,10 +123,10 @@ type TemperatureController {
   name: String
 
   """The last time that the duty cycle was calculated"""
-  previousCalculationTime: DateTime
+  previousCalculationTime: Time
 
   """The target temperature when in auto mode"""
-  setPoint: Float
+  setPoint: String
 
   """The probes assigned to this controller"""
   temperatureProbes: [TemperatureProbe]

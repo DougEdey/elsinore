@@ -19,10 +19,10 @@ type TemperatureController struct {
 	HeatSettings            PidSettings
 	HysteriaSettings        HysteriaSettings
 	ManualSettings          ManualSettings
-	Mode                    string // Mode of this controller
+	Mode                    ControllerMode // Mode of this controller
 	DutyCycle               int64
 	CalculatedDuty          int64
-	SetPoint                physic.Temperature
+	SetPointRaw             physic.Temperature
 	PreviousCalculationTime time.Time
 	TotalDiff               float64 // Always in Fahrenheit (internal calculation)
 	integralError           float64
@@ -42,8 +42,8 @@ type PidSettings struct {
 
 // HysteriaSettings are used for Hysteria mode
 type HysteriaSettings struct {
-	MaxTemp    physic.Temperature
-	MinTemp    physic.Temperature
+	MaxTempRaw physic.Temperature
+	MinTempRaw physic.Temperature
 	MinTime    int64 // In seconds
 	Configured bool
 }
@@ -53,6 +53,8 @@ type ManualSettings struct {
 	CycleTime  int64
 	Configured bool
 }
+
+type ControllerMode string
 
 // FindTemperatureControllerForProbe returns the pid controller associated with the TemperatureProbe
 func FindTemperatureControllerForProbe(physAddr string) *TemperatureController {
@@ -127,8 +129,8 @@ func (c *TemperatureController) UpdateOutput() {
 func (c *TemperatureController) AverageTemperature() physic.Temperature {
 	var totalTemp int64
 	for _, probe := range c.TemperatureProbes {
-		log.Printf("%v: %v", totalTemp, probe.Reading.Celsius())
-		totalTemp += (int64)(probe.Reading)
+		log.Printf("%v: %v", totalTemp, probe.ReadingRaw.Celsius())
+		totalTemp += (int64)(probe.ReadingRaw)
 	}
 
 	return (physic.Temperature)(totalTemp / (int64)(len(c.TemperatureProbes)))
@@ -152,7 +154,7 @@ func (c *TemperatureController) Calculate(averageTemperature physic.Temperature,
 		return c.DutyCycle
 	}
 
-	var targetDiff = c.SetPoint.Fahrenheit() - averageTemperature.Fahrenheit()
+	var targetDiff = c.SetPointRaw.Fahrenheit() - averageTemperature.Fahrenheit()
 	var msDiff = float64(delta.Milliseconds())
 	c.TotalDiff = (c.TotalDiff + targetDiff) * msDiff
 	var currErr = (targetDiff - c.prevDiff) / msDiff
@@ -169,4 +171,16 @@ func (c *TemperatureController) Calculate(averageTemperature physic.Temperature,
 		output = 0
 	}
 	return int64(output)
+}
+
+func (c *TemperatureController) SetPoint() string {
+	return c.SetPointRaw.String()
+}
+
+func (h *HysteriaSettings) MaxTemp() string {
+	return h.MaxTempRaw.String()
+}
+
+func (h *HysteriaSettings) MinTemp() string {
+	return h.MinTempRaw.String()
 }
