@@ -46,15 +46,15 @@ func GetTemperature(physAddr string) *TemperatureProbe {
 	return probe
 }
 
-// GetAddresses -> Get the list of available addresses
-func GetAddresses() []*string {
-	keys := make([]*string, len(probes))
+// GetProbes -> Get all the probes
+func GetProbes() []*TemperatureProbe {
+	values := make([]*TemperatureProbe, len(probes))
 	i := 0
-	for k := range probes {
-		keys[i] = &k
+	for _, v := range probes {
+		values[i] = v
 		i++
 	}
-	return keys
+	return values
 }
 
 // ReadAddresses -> Update the TemperatureProbes with the current value from the device

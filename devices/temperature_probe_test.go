@@ -33,9 +33,9 @@ func TestGetTemperature(t *testing.T) {
 	})
 }
 
-func TestGetAddresses(t *testing.T) {
-	t.Run("GetAddresses returns an empty list by default", func(t *testing.T) {
-		emptyResult := devices.GetAddresses()
+func TestGetProbes(t *testing.T) {
+	t.Run("GetProbes returns an empty list by default", func(t *testing.T) {
+		emptyResult := devices.GetProbes()
 
 		if len(emptyResult) == 0 {
 			t.Errorf("The default list should be empty. Found %v", emptyResult)

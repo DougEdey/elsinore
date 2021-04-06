@@ -37,11 +37,31 @@ func (r *queryResolver) Probe(ctx context.Context, address *string) (*devices.Te
 	if device != nil {
 		return device, nil
 	}
-	return nil, fmt.Errorf("No device found for address %v", address)
+	return nil, fmt.Errorf("No device found for address %v", *address)
 }
 
-func (r *queryResolver) ProbeList(ctx context.Context) ([]*string, error) {
-	return devices.GetAddresses(), nil
+func (r *queryResolver) ProbeList(ctx context.Context) ([]*devices.TemperatureProbe, error) {
+	return devices.GetProbes(), nil
+}
+
+func (r *queryResolver) FetchProbes(ctx context.Context, addresses []*string) ([]*devices.TemperatureProbe, error) {
+	deviceList := []*devices.TemperatureProbe{}
+	missingAddresses := []string{}
+	for _, address := range addresses {
+		device := devices.GetTemperature(*address)
+		if device != nil {
+			deviceList = append(deviceList, device)
+		} else {
+			missingAddresses = append(missingAddresses, *address)
+		}
+	}
+
+	missingError := (error)(nil)
+	if len(missingAddresses) > 0 {
+		missingError = fmt.Errorf("No device(s) found for address(es): %v", missingAddresses)
+	}
+
+	return deviceList, missingError
 }
 
 func (r *temperatureControllerResolver) ID(ctx context.Context, obj *devices.TemperatureController) (string, error) {

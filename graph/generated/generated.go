@@ -80,8 +80,9 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Probe     func(childComplexity int, address *string) int
-		ProbeList func(childComplexity int) int
+		FetchProbes func(childComplexity int, addresses []*string) int
+		Probe       func(childComplexity int, address *string) int
+		ProbeList   func(childComplexity int) int
 	}
 
 	TemperatureController struct {
@@ -120,7 +121,8 @@ type PidSettingsResolver interface {
 }
 type QueryResolver interface {
 	Probe(ctx context.Context, address *string) (*devices.TemperatureProbe, error)
-	ProbeList(ctx context.Context) ([]*string, error)
+	ProbeList(ctx context.Context) ([]*devices.TemperatureProbe, error)
+	FetchProbes(ctx context.Context, addresses []*string) ([]*devices.TemperatureProbe, error)
 }
 type TemperatureControllerResolver interface {
 	ID(ctx context.Context, obj *devices.TemperatureController) (string, error)
@@ -267,6 +269,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PidSettings.Proportional(childComplexity), true
+
+	case "Query.fetchProbes":
+		if e.complexity.Query.FetchProbes == nil {
+			break
+		}
+
+		args, err := ec.field_Query_fetchProbes_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.FetchProbes(childComplexity, args["addresses"].([]*string)), true
 
 	case "Query.probe":
 		if e.complexity.Query.Probe == nil {
@@ -546,8 +560,11 @@ input probeSettings {
 type Query {
   probe(address: String): TemperatureProbe
 
-  """Get the list of device addresses"""
-  probeList: [String]
+  """Get the list of probes"""
+  probeList: [TemperatureProbe]
+
+  """Get a specific list of probes"""
+  fetchProbes(addresses: [String]): [TemperatureProbe]
 }
 
 type TemperatureController {
@@ -637,6 +654,21 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_fetchProbes_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []*string
+	if tmp, ok := rawArgs["addresses"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("addresses"))
+		arg0, err = ec.unmarshalOString2ᚕᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["addresses"] = arg0
 	return args, nil
 }
 
@@ -1319,9 +1351,48 @@ func (ec *executionContext) _Query_probeList(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*string)
+	res := resTmp.([]*devices.TemperatureProbe)
 	fc.Result = res
-	return ec.marshalOString2ᚕᚖstring(ctx, field.Selections, res)
+	return ec.marshalOTemperatureProbe2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐTemperatureProbe(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_fetchProbes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_fetchProbes_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().FetchProbes(rctx, args["addresses"].([]*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*devices.TemperatureProbe)
+	fc.Result = res
+	return ec.marshalOTemperatureProbe2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐTemperatureProbe(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3201,6 +3272,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_probeList(ctx, field)
+				return res
+			})
+		case "fetchProbes":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_fetchProbes(ctx, field)
 				return res
 			})
 		case "__type":
