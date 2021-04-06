@@ -88,8 +88,11 @@ input probeSettings {
 type Query {
   probe(address: String): TemperatureProbe
 
-  """Get the list of device addresses"""
-  probeList: [String]
+  """Get the list of probes"""
+  probeList: [TemperatureProbe]
+
+  """Get a specific list of probes"""
+  fetchProbes(addresses: [String]): [TemperatureProbe]
 }
 
 type TemperatureController {
