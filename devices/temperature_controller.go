@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"gorm.io/gorm"
 	"periph.io/x/periph/conn/physic"
 )
 
@@ -12,8 +13,9 @@ var controllers []*TemperatureController
 
 // TemperatureController defines a mapping of temperature probes to their control settings
 type TemperatureController struct {
+	gorm.Model
 	Name                    string
-	LastReadings            []physic.Temperature
+	LastReadings            []physic.Temperature `gorm:"-"`
 	TemperatureProbes       []*TemperatureProbe
 	CoolSettings            PidSettings
 	HeatSettings            PidSettings
@@ -23,37 +25,46 @@ type TemperatureController struct {
 	DutyCycle               int64
 	CalculatedDuty          int64
 	SetPointRaw             physic.Temperature
-	PreviousCalculationTime time.Time
-	TotalDiff               float64 // Always in Fahrenheit (internal calculation)
-	integralError           float64
-	derivativeFactor        float64
-	prevDiff                float64 // Always in Fahrenheit (internal calculaiton)
+	PreviousCalculationTime time.Time `gorm:"-"`
+	TotalDiff               float64   `gorm:"-"` // Always in Fahrenheit (internal calculation)
+	integralError           float64   `gorm:"-"`
+	derivativeFactor        float64   `gorm:"-"`
+	prevDiff                float64   `gorm:"-"` // Always in Fahrenheit (internal calculaiton)
+	TemperatureControllerID uint
 }
 
 // PidSettings define the actual values for heating/cooling as persisted
 type PidSettings struct {
-	Proportional float64
-	Integral     float64
-	Derivative   float64
-	CycleTime    int64
-	Delay        int64
-	Configured   bool
+	gorm.Model
+	Proportional            float64
+	Integral                float64
+	Derivative              float64
+	CycleTime               int64
+	Delay                   int64
+	Configured              bool
+	TemperatureControllerID uint
 }
 
 // HysteriaSettings are used for Hysteria mode
 type HysteriaSettings struct {
-	MaxTempRaw physic.Temperature
-	MinTempRaw physic.Temperature
-	MinTime    int64 // In seconds
-	Configured bool
+	gorm.Model
+	MaxTempRaw              physic.Temperature
+	MinTempRaw              physic.Temperature
+	MinTime                 int64 // In seconds
+	Configured              bool
+	TemperatureControllerID uint
 }
 
+// ManualSettings are used for manually controlling the output
 type ManualSettings struct {
-	DutyCycle  int64
-	CycleTime  int64
-	Configured bool
+	gorm.Model
+	DutyCycle               int64
+	CycleTime               int64
+	Configured              bool
+	TemperatureControllerID uint
 }
 
+// ControllerMode Auto, Manual, Off, Hysteria
 type ControllerMode string
 
 // FindTemperatureControllerForProbe returns the pid controller associated with the TemperatureProbe
@@ -173,14 +184,17 @@ func (c *TemperatureController) Calculate(averageTemperature physic.Temperature,
 	return int64(output)
 }
 
+// SetPoint -> THe target Setpoint for this controller
 func (c *TemperatureController) SetPoint() string {
 	return c.SetPointRaw.String()
 }
 
+// MaxTemp -> For hysteria, this is the string for the max temp to turn off
 func (h *HysteriaSettings) MaxTemp() string {
 	return h.MaxTempRaw.String()
 }
 
+// MinTemp -> For hysteria, this is the string for the min temp to turn on
 func (h *HysteriaSettings) MinTemp() string {
 	return h.MinTempRaw.String()
 }
