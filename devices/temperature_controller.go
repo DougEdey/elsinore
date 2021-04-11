@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/dougedey/elsinore/database"
 	"gorm.io/gorm"
 	"periph.io/x/periph/conn/physic"
 )
@@ -112,10 +113,12 @@ func CreateTemperatureController(name string, probe *TemperatureProbe) (*Tempera
 
 	if controller == nil {
 		controller = &TemperatureController{Name: name, TotalDiff: 0, integralError: 0, derivativeFactor: 0, prevDiff: 0}
+		database.Create(&controller)
 		controllers = append(controllers, controller)
 	}
 
 	controller.TemperatureProbes = append(controller.TemperatureProbes, probe)
+	database.Save(&controller)
 	return controller, nil
 }
 

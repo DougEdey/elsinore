@@ -3,9 +3,11 @@ package devices_test
 import (
 	"log"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/dougedey/elsinore/database"
 	"github.com/dougedey/elsinore/devices"
 	"periph.io/x/periph/conn/onewire"
 	"periph.io/x/periph/conn/physic"
@@ -77,6 +79,42 @@ func TestCreateTemperatureController(t *testing.T) {
 			t.Fatalf("Expected %v, but got %v", existingController, temperatureController)
 		}
 	})
+}
+
+func TestPersistenceTemperatureController(t *testing.T) {
+	dbName := "test"
+	database.InitDatabase(&dbName,
+		&devices.TemperatureProbe{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
+		&devices.ManualSettings{}, &devices.TemperatureController{},
+	)
+	if database.FetchDatabase() == nil {
+		t.Fatal("No Database configured")
+	}
+	devices.ClearControllers()
+	probe := devices.TemperatureProbe{
+		PhysAddr: "ARealAddress",
+		Address:  onewire.Address(12345),
+	}
+
+	t.Run("A new Temperature controller is persisted to the DB when configured", func(t *testing.T) {
+		devices.ClearControllers()
+		temperatureController, err := devices.CreateTemperatureController("sample", &probe)
+		if err != nil {
+			t.Fatalf("Failed to create the Temperature Controller: %v", err)
+		}
+
+		if temperatureController == nil {
+			t.Fatalf("No Pid Controller returned for sample")
+		}
+
+		var dbTempController devices.TemperatureController
+		database.FetchDatabase().First(&dbTempController)
+		if dbTempController.Name != "sample" {
+			t.Fatalf("Expected the temperature controller to be called sample, but got %v", temperatureController.Name)
+		}
+	})
+
+	os.Remove("test.db")
 }
 
 func TestTemperatureControllerAverageTemperature(t *testing.T) {

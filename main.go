@@ -8,11 +8,10 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/dougedey/elsinore/database"
 	"github.com/dougedey/elsinore/devices"
 	"github.com/dougedey/elsinore/graph"
 	"github.com/dougedey/elsinore/graph/generated"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 
 	"net/http"
 )
@@ -23,22 +22,10 @@ func main() {
 	dbName := flag.String("db_name", "elsinore", "The path/name of the local database")
 	flag.Parse()
 
-	fmt.Println("Loading database")
-	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("%v.db", *dbName)), &gorm.Config{
-		DisableForeignKeyConstraintWhenMigrating: true,
-	})
-	if err != nil {
-		panic("failed to connect database")
-	}
-
-	// Migrate the schema
-	err = db.AutoMigrate(
+	database.InitDatabase(dbName,
 		&devices.TemperatureProbe{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
 		&devices.ManualSettings{}, &devices.TemperatureController{},
 	)
-	if err != nil {
-		log.Panicf("Migration failed! Please check the logs! %v", err)
-	}
 
 	fmt.Println("Loaded and looking for temperatures")
 	messages := make(chan string)
