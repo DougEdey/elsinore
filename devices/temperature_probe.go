@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"gorm.io/gorm"
 	"periph.io/x/periph/conn/onewire"
 	"periph.io/x/periph/conn/physic"
 	"periph.io/x/periph/devices/ds18b20"
@@ -22,10 +23,12 @@ var probes = make(map[string]*TemperatureProbe)
 // Address -> The unsigned int value for the readings
 // Reading -> The actual reading as a Physic.Temperature
 type TemperatureProbe struct {
-	PhysAddr   string          `json:"physAddr"`
-	Address    onewire.Address `json:"address"`
-	ReadingRaw physic.Temperature
-	Updated    time.Time `json:"updatedAt"`
+	gorm.Model
+	PhysAddr                string
+	Address                 onewire.Address
+	ReadingRaw              physic.Temperature `gorm:"-"`
+	Updated                 time.Time          `gorm:"-"`
+	TemperatureControllerID uint
 }
 
 // UpdateTemperature Set the temperature on the Temperature Probe from a string
@@ -33,6 +36,7 @@ func (t *TemperatureProbe) UpdateTemperature(newTemp string) error {
 	return t.ReadingRaw.Set(newTemp)
 }
 
+// Reading The current temperature reading for the probe
 func (t *TemperatureProbe) Reading() string {
 	return t.ReadingRaw.String()
 }

@@ -10,3 +10,6 @@ elsinore
 
 # IDE Stuff
 .vscode
+
+# Local files
+**/*.db
