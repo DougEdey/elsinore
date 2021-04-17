@@ -114,7 +114,10 @@ func TestPersistenceTemperatureController(t *testing.T) {
 		}
 	})
 
-	os.Remove("test.db")
+	e := os.Remove("test.db")
+	if e != nil {
+		t.Fatal(e)
+	}
 }
 
 func TestTemperatureControllerAverageTemperature(t *testing.T) {

@@ -1,10 +1,12 @@
 package graph_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/dougedey/elsinore/database"
 	"github.com/dougedey/elsinore/devices"
 	"github.com/dougedey/elsinore/graph"
 	"github.com/dougedey/elsinore/graph/generated"
@@ -18,8 +20,7 @@ func TestQuery(t *testing.T) {
 	devices.SetProbe(&devices.TemperatureProbe{
 		PhysAddr: realAddress,
 		Address:  onewire.Address(12345),
-	},
-	)
+	})
 	var probeResp struct {
 		Probe struct {
 			PhysAddr string
@@ -118,4 +119,78 @@ func TestQuery(t *testing.T) {
 			err.Error(),
 		)
 	})
+}
+
+func TestMutations(t *testing.T) {
+	dbName := "test"
+	database.InitDatabase(&dbName,
+		&devices.TemperatureProbe{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
+		&devices.ManualSettings{}, &devices.TemperatureController{},
+	)
+
+	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}})))
+	realAddress := "ARealAddress"
+	devices.SetProbe(&devices.TemperatureProbe{
+		PhysAddr: realAddress,
+		Address:  onewire.Address(12345),
+	})
+	aRealAddress := "RealAddress"
+	devices.SetProbe(&devices.TemperatureProbe{
+		PhysAddr: aRealAddress,
+		Address:  onewire.Address(123456),
+	})
+	var assignResp struct {
+		AssignProbe struct {
+			ID   string
+			Name string
+		}
+		Errors []struct {
+			Message   string
+			Locations []struct {
+				Line   int
+				Column int
+			}
+		}
+	}
+	var assignRespTwo struct {
+		AssignProbe struct {
+			ID   string
+			Name string
+		}
+		Errors []struct {
+			Message   string
+			Locations []struct {
+				Line   int
+				Column int
+			}
+		}
+	}
+
+	t.Run("CreateTemperatureController saves to the DB", func(t *testing.T) {
+		c.MustPost(`
+		mutation {
+			assignProbe(settings: { address: "ARealAddress", name: "TEST PROBE"}) {
+				id
+				name
+			}
+		}
+		`, &assignResp)
+		require.Equal(t, "1", assignResp.AssignProbe.ID)
+
+		c.MustPost(`
+		mutation {
+			assignProbe(settings: { address: "RealAddress", name: "TEST PROBE 2"}) {
+				id
+				name
+			}
+		}
+		`, &assignRespTwo)
+
+		require.Equal(t, "2", assignRespTwo.AssignProbe.ID)
+	})
+
+	e := os.Remove("test.db")
+	if e != nil {
+		t.Fatal(e)
+	}
 }
