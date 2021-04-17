@@ -12,6 +12,7 @@ import (
 	"github.com/dougedey/elsinore/devices"
 	"github.com/dougedey/elsinore/graph"
 	"github.com/dougedey/elsinore/graph/generated"
+	"periph.io/x/periph/conn/onewire"
 
 	"net/http"
 )
@@ -20,8 +21,17 @@ func main() {
 	portPtr := flag.String("port", "8080", "The port to listen on")
 	graphiqlFlag := flag.Bool("graphiql", true, "Disable GraphiQL web UI")
 	dbName := flag.String("db_name", "elsinore", "The path/name of the local database")
+	testDeviceFlag := flag.Bool("test_device", false, "Create a test device")
 	flag.Parse()
 
+	if *testDeviceFlag {
+		realAddress := "ARealAddress"
+		devices.SetProbe(&devices.TemperatureProbe{
+			PhysAddr: realAddress,
+			Address:  onewire.Address(12345),
+		})
+	}
+	
 	database.InitDatabase(dbName,
 		&devices.TemperatureProbe{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
 		&devices.ManualSettings{}, &devices.TemperatureController{},
