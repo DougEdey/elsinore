@@ -28,7 +28,7 @@ func TestCreateTemperatureController(t *testing.T) {
 		}
 
 		if temperatureController == nil {
-			t.Fatalf("No Pid Controller returned for sample")
+			t.Fatal("No Pid Controller returned for sample")
 		}
 
 		if temperatureController.Name != "sample" {
@@ -104,7 +104,7 @@ func TestPersistenceTemperatureController(t *testing.T) {
 		}
 
 		if temperatureController == nil {
-			t.Fatalf("No Pid Controller returned for sample")
+			t.Fatal("No Pid Controller returned for sample")
 		}
 
 		var dbTempController devices.TemperatureController
@@ -114,7 +114,11 @@ func TestPersistenceTemperatureController(t *testing.T) {
 		}
 	})
 
-	os.Remove("test.db")
+	database.Close()
+	e := os.Remove("test.db")
+	if e != nil {
+		t.Fatal(e)
+	}
 }
 
 func TestTemperatureControllerAverageTemperature(t *testing.T) {

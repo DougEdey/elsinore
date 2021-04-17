@@ -6,6 +6,7 @@ package graph
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/dougedey/elsinore/devices"
 	"github.com/dougedey/elsinore/graph/generated"
@@ -13,11 +14,11 @@ import (
 )
 
 func (r *hysteriaSettingsResolver) ID(ctx context.Context, obj *devices.HysteriaSettings) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return fmt.Sprint(obj.ID), nil
 }
 
 func (r *manualSettingsResolver) ID(ctx context.Context, obj *devices.ManualSettings) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return fmt.Sprint(obj.ID), nil
 }
 
 func (r *mutationResolver) AssignProbe(ctx context.Context, settings *model.ProbeSettings) (*devices.TemperatureController, error) {
@@ -29,7 +30,7 @@ func (r *mutationResolver) AssignProbe(ctx context.Context, settings *model.Prob
 }
 
 func (r *pidSettingsResolver) ID(ctx context.Context, obj *devices.PidSettings) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return fmt.Sprint(obj.ID), nil
 }
 
 func (r *queryResolver) Probe(ctx context.Context, address *string) (*devices.TemperatureProbe, error) {
@@ -65,11 +66,11 @@ func (r *queryResolver) FetchProbes(ctx context.Context, addresses []*string) ([
 }
 
 func (r *temperatureControllerResolver) ID(ctx context.Context, obj *devices.TemperatureController) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return strconv.FormatUint(uint64(obj.ID), 10), nil
 }
 
 func (r *temperatureProbeResolver) ID(ctx context.Context, obj *devices.TemperatureProbe) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return fmt.Sprint(obj.ID), nil
 }
 
 // HysteriaSettings returns generated.HysteriaSettingsResolver implementation.
