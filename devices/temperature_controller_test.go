@@ -114,6 +114,7 @@ func TestPersistenceTemperatureController(t *testing.T) {
 		}
 	})
 
+	database.Close()
 	e := os.Remove("test.db")
 	if e != nil {
 		t.Fatal(e)

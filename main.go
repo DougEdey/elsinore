@@ -31,7 +31,7 @@ func main() {
 			Address:  onewire.Address(12345),
 		})
 	}
-	
+
 	database.InitDatabase(dbName,
 		&devices.TemperatureProbe{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
 		&devices.ManualSettings{}, &devices.TemperatureController{},

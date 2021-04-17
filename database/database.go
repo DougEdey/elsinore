@@ -9,12 +9,14 @@ import (
 )
 
 var datastore *gorm.DB
+var dbFile gorm.Dialector
 
 // InitDatabase Create a db in the dbName path/filename, and migrate it with the supplied models
 func InitDatabase(dbName *string, dst ...interface{}) {
 	fmt.Println("Loading database")
 	var err error
-	datastore, err = gorm.Open(sqlite.Open(fmt.Sprintf("%v.db", *dbName)), &gorm.Config{
+	dbFile = sqlite.Open(fmt.Sprintf("%v.db", *dbName))
+	datastore, err = gorm.Open(dbFile, &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
@@ -31,6 +33,15 @@ func InitDatabase(dbName *string, dst ...interface{}) {
 // FetchDatabase Return the current database pointer
 func FetchDatabase() *gorm.DB {
 	return datastore
+}
+
+// Close Closes the underlying DB
+func Close() {
+	sqlDB, err := datastore.DB()
+	if err != nil {
+		log.Panicf("NO DB to close! %v", err)
+	}
+	sqlDB.Close()
 }
 
 // Create a new instance of the supplied interface, this is a helper wrapper around the database so you don't need to check FetchDatabase

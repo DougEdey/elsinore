@@ -189,6 +189,7 @@ func TestMutations(t *testing.T) {
 		require.Equal(t, "2", assignRespTwo.AssignProbe.ID)
 	})
 
+	database.Close()
 	e := os.Remove("test.db")
 	if e != nil {
 		t.Fatal(e)
