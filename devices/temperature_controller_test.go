@@ -13,6 +13,22 @@ import (
 	"periph.io/x/periph/conn/physic"
 )
 
+func setupTestDb(t *testing.T) {
+	dbName := "test"
+	database.InitDatabase(&dbName,
+		&devices.TemperatureProbe{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
+		&devices.ManualSettings{}, &devices.TemperatureController{},
+	)
+
+	t.Cleanup(func() {
+		database.Close()
+		e := os.Remove("test.db")
+		if e != nil {
+			t.Fatal(e)
+		}
+	})
+}
+
 func TestCreateTemperatureController(t *testing.T) {
 	devices.ClearControllers()
 	probe := devices.TemperatureProbe{
@@ -82,14 +98,7 @@ func TestCreateTemperatureController(t *testing.T) {
 }
 
 func TestPersistenceTemperatureController(t *testing.T) {
-	dbName := "test"
-	database.InitDatabase(&dbName,
-		&devices.TemperatureProbe{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
-		&devices.ManualSettings{}, &devices.TemperatureController{},
-	)
-	if database.FetchDatabase() == nil {
-		t.Fatal("No Database configured")
-	}
+	setupTestDb(t)
 	devices.ClearControllers()
 	probe := devices.TemperatureProbe{
 		PhysAddr: "ARealAddress",
@@ -113,12 +122,6 @@ func TestPersistenceTemperatureController(t *testing.T) {
 			t.Fatalf("Expected the temperature controller to be called sample, but got %v", temperatureController.Name)
 		}
 	})
-
-	database.Close()
-	e := os.Remove("test.db")
-	if e != nil {
-		t.Fatal(e)
-	}
 }
 
 func TestTemperatureControllerAverageTemperature(t *testing.T) {

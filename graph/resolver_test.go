@@ -14,6 +14,22 @@ import (
 	"periph.io/x/periph/conn/onewire"
 )
 
+func setupTestDb(t *testing.T) {
+	dbName := "test"
+	database.InitDatabase(&dbName,
+		&devices.TemperatureProbe{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
+		&devices.ManualSettings{}, &devices.TemperatureController{},
+	)
+
+	t.Cleanup(func() {
+		database.Close()
+		e := os.Remove("test.db")
+		if e != nil {
+			t.Fatal(e)
+		}
+	})
+}
+
 func TestQuery(t *testing.T) {
 	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}})))
 	realAddress := "ARealAddress"
@@ -21,6 +37,7 @@ func TestQuery(t *testing.T) {
 		PhysAddr: realAddress,
 		Address:  onewire.Address(12345),
 	})
+
 	var probeResp struct {
 		Probe struct {
 			PhysAddr string
@@ -122,11 +139,7 @@ func TestQuery(t *testing.T) {
 }
 
 func TestMutations(t *testing.T) {
-	dbName := "test"
-	database.InitDatabase(&dbName,
-		&devices.TemperatureProbe{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
-		&devices.ManualSettings{}, &devices.TemperatureController{},
-	)
+	setupTestDb(t)
 
 	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}})))
 	realAddress := "ARealAddress"
@@ -215,10 +228,4 @@ func TestMutations(t *testing.T) {
 
 		require.Equal(t, "1", removeResp.RemoveProbeFromController.ID)
 	})
-
-	database.Close()
-	e := os.Remove("test.db")
-	if e != nil {
-		t.Fatal(e)
-	}
 }
