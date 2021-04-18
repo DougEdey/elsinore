@@ -122,6 +122,17 @@ func CreateTemperatureController(name string, probe *TemperatureProbe) (*Tempera
 	return controller, nil
 }
 
+func (c *TemperatureController) RemoveProbe(physAddr string) error {
+	for i, probe := range c.TemperatureProbes {
+		if probe.PhysAddr == physAddr {
+			c.TemperatureProbes[i] = c.TemperatureProbes[len(c.TemperatureProbes)-1]
+			c.TemperatureProbes = c.TemperatureProbes[:len(c.TemperatureProbes)-1]
+			return nil
+		}
+	}
+	return fmt.Errorf("Could not find a probe with address %v", physAddr)
+}
+
 // UpdateOutput updates the temperatures and decides how to control the outputs
 func (c *TemperatureController) UpdateOutput() {
 	if len(c.LastReadings) >= 5 {

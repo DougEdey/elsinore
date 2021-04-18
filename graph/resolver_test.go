@@ -166,7 +166,7 @@ func TestMutations(t *testing.T) {
 		}
 	}
 
-	t.Run("CreateTemperatureController saves to the DB", func(t *testing.T) {
+	t.Run("assignProbe saves to the DB", func(t *testing.T) {
 		c.MustPost(`
 		mutation {
 			assignProbe(settings: { address: "ARealAddress", name: "TEST PROBE"}) {
@@ -187,6 +187,33 @@ func TestMutations(t *testing.T) {
 		`, &assignRespTwo)
 
 		require.Equal(t, "2", assignRespTwo.AssignProbe.ID)
+	})
+
+	var removeResp struct {
+		RemoveProbeFromController struct {
+			ID   string
+			Name string
+		}
+		Errors []struct {
+			Message   string
+			Locations []struct {
+				Line   int
+				Column int
+			}
+		}
+	}
+
+	t.Run("removeProbeFromController removes a probe from the controller", func(t *testing.T) {
+		c.MustPost(`
+		mutation {
+			removeProbeFromController(address: "ARealAddress") {
+				id
+				name
+			}
+		}
+		`, &removeResp)
+
+		require.Equal(t, "1", removeResp.RemoveProbeFromController.ID)
 	})
 
 	database.Close()
