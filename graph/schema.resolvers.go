@@ -29,6 +29,15 @@ func (r *mutationResolver) AssignProbe(ctx context.Context, settings *model.Prob
 	return nil, fmt.Errorf("Coud not find a probe for %v", *settings.Address)
 }
 
+func (r *mutationResolver) RemoveProbeFromController(ctx context.Context, address *string) (*devices.TemperatureController, error) {
+	controller := devices.FindTemperatureControllerForProbe(*address)
+	if controller == nil {
+		return nil, fmt.Errorf("No controller could be found for %v", address)
+	}
+	error := controller.RemoveProbe(*address)
+	return controller, error
+}
+
 func (r *pidSettingsResolver) ID(ctx context.Context, obj *devices.PidSettings) (string, error) {
 	return fmt.Sprint(obj.ID), nil
 }

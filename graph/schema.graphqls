@@ -50,6 +50,7 @@ type ManualSettings {
 
 type Mutation {
   assignProbe(settings: probeSettings): TemperatureController
+  removeProbeFromController(address: String): TemperatureController
 }
 
 """The settings for heating or cooling on a temperature controller"""
