@@ -108,7 +108,7 @@ func CreateTemperatureController(name string, probe *TemperatureProbe) (*Tempera
 		if existingControllerForProbe == controller {
 			return controller, nil
 		}
-		return nil, fmt.Errorf("Temperature Controller (%v) exists for this probe, trying removing it first", existingControllerForProbe)
+		return nil, fmt.Errorf("temperature Controller (%v) exists for this probe, trying removing it first", existingControllerForProbe)
 	}
 
 	if controller == nil {
@@ -122,6 +122,7 @@ func CreateTemperatureController(name string, probe *TemperatureProbe) (*Tempera
 	return controller, nil
 }
 
+// RemoveProbe removes a temperature probe from this controller
 func (c *TemperatureController) RemoveProbe(physAddr string) error {
 	for i, probe := range c.TemperatureProbes {
 		if probe.PhysAddr == physAddr {
@@ -130,7 +131,7 @@ func (c *TemperatureController) RemoveProbe(physAddr string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Could not find a probe with address %v", physAddr)
+	return fmt.Errorf("could not find a probe with address %v", physAddr)
 }
 
 // UpdateOutput updates the temperatures and decides how to control the outputs
