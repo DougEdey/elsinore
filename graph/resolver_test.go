@@ -182,7 +182,7 @@ func TestMutations(t *testing.T) {
 	t.Run("assignProbe saves to the DB", func(t *testing.T) {
 		c.MustPost(`
 		mutation {
-			assignProbe(settings: { address: "ARealAddress", name: "TEST PROBE"}) {
+			assignProbe(address: "ARealAddress", name: "TEST PROBE") {
 				id
 				name
 			}
@@ -192,7 +192,7 @@ func TestMutations(t *testing.T) {
 
 		c.MustPost(`
 		mutation {
-			assignProbe(settings: { address: "RealAddress", name: "TEST PROBE 2"}) {
+			assignProbe(address: "RealAddress", name: "TEST PROBE 2") {
 				id
 				name
 			}
