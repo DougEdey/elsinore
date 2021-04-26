@@ -10,6 +10,7 @@ import (
 
 	"github.com/dougedey/elsinore/devices"
 	"github.com/dougedey/elsinore/graph/generated"
+	"github.com/dougedey/elsinore/graph/model"
 )
 
 func (r *hysteriaSettingsResolver) ID(ctx context.Context, obj *devices.HysteriaSettings) (string, error) {
@@ -20,21 +21,31 @@ func (r *manualSettingsResolver) ID(ctx context.Context, obj *devices.ManualSett
 	return fmt.Sprint(obj.ID), nil
 }
 
-func (r *mutationResolver) AssignProbe(ctx context.Context, name *string, address *string) (*devices.TemperatureController, error) {
-	probe := devices.GetTemperature(*address)
+func (r *mutationResolver) AssignProbe(ctx context.Context, name string, address string) (*devices.TemperatureController, error) {
+	probe := devices.GetTemperature(address)
 	if probe != nil {
-		return devices.CreateTemperatureController(*name, probe)
+		return devices.CreateTemperatureController(name, probe)
 	}
-	return nil, fmt.Errorf("could not find a probe for %v", *address)
+	return nil, fmt.Errorf("could not find a probe for %v", address)
 }
 
-func (r *mutationResolver) RemoveProbeFromController(ctx context.Context, address *string) (*devices.TemperatureController, error) {
-	controller := devices.FindTemperatureControllerForProbe(*address)
+func (r *mutationResolver) RemoveProbeFromController(ctx context.Context, address string) (*devices.TemperatureController, error) {
+	controller := devices.FindTemperatureControllerForProbe(address)
 	if controller == nil {
 		return nil, fmt.Errorf("no controller could be found for %v", address)
 	}
-	error := controller.RemoveProbe(*address)
+	error := controller.RemoveProbe(address)
 	return controller, error
+}
+
+func (r *mutationResolver) UpdateProbe(ctx context.Context, id string, controllerSettings model.ControllerSettingsInput) (*devices.TemperatureController, error) {
+	controller := devices.FindTemperatureControllerByID(id)
+	if controller == nil {
+		return nil, fmt.Errorf("no controller could be found for: %v", id)
+	}
+
+	err := controller.ApplySettings(controllerSettings)
+	return controller, err
 }
 
 func (r *pidSettingsResolver) ID(ctx context.Context, obj *devices.PidSettings) (string, error) {

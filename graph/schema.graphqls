@@ -49,9 +49,9 @@ type ManualSettings {
 }
 
 type Mutation {
-  assignProbe(name: String, address: String): TemperatureController
-  removeProbeFromController(address: String): TemperatureController
-
+  assignProbe(name: String!, address: String!): TemperatureController
+  removeProbeFromController(address: String!): TemperatureController
+  updateProbe(id: ID!, controllerSettings: ControllerSettingsInput!): TemperatureController
 }
 
 """The settings for heating or cooling on a temperature controller"""
@@ -79,7 +79,7 @@ type PidSettings {
 }
 
 """Used to configure a controller"""
-input ControllerSettings {
+input ControllerSettingsInput {
   """The name of the controller."""
   name: String
 
@@ -163,6 +163,9 @@ type TemperatureProbe {
 
 """The new settings for hysteria mode"""
 input HysteriaSettingsInput {
+  """Indicates if these settings have been configured yet"""
+  configured: Boolean
+
   """When this temperature is hit, turn on the cooling output"""
   maxTemp: String
 
@@ -175,6 +178,9 @@ input HysteriaSettingsInput {
 
 """The new manual settings for this controller"""
 input ManualSettingsInput {
+  """Indicates if these settings have been configured yet"""
+  configured: Boolean
+
   """The time for one duty cycle in seconds"""
   cycleTime: Int
 
@@ -196,12 +202,9 @@ input PidSettingsInput {
   """The derivative calculation value"""
   derivative: Float
 
-  """The ID of an object"""
-  id: ID!
-
   """The integral calculation value"""
   integral: Float
- 
+
   """The proportional calculation value"""
   proportional: Float
 }

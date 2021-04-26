@@ -66,8 +66,9 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AssignProbe               func(childComplexity int, name *string, address *string) int
-		RemoveProbeFromController func(childComplexity int, address *string) int
+		AssignProbe               func(childComplexity int, name string, address string) int
+		RemoveProbeFromController func(childComplexity int, address string) int
+		UpdateProbe               func(childComplexity int, id string, controllerSettings model.ControllerSettingsInput) int
 	}
 
 	PidSettings struct {
@@ -115,8 +116,9 @@ type ManualSettingsResolver interface {
 	ID(ctx context.Context, obj *devices.ManualSettings) (string, error)
 }
 type MutationResolver interface {
-	AssignProbe(ctx context.Context, name *string, address *string) (*devices.TemperatureController, error)
-	RemoveProbeFromController(ctx context.Context, address *string) (*devices.TemperatureController, error)
+	AssignProbe(ctx context.Context, name string, address string) (*devices.TemperatureController, error)
+	RemoveProbeFromController(ctx context.Context, address string) (*devices.TemperatureController, error)
+	UpdateProbe(ctx context.Context, id string, controllerSettings model.ControllerSettingsInput) (*devices.TemperatureController, error)
 }
 type PidSettingsResolver interface {
 	ID(ctx context.Context, obj *devices.PidSettings) (string, error)
@@ -221,7 +223,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AssignProbe(childComplexity, args["name"].(*string), args["address"].(*string)), true
+		return e.complexity.Mutation.AssignProbe(childComplexity, args["name"].(string), args["address"].(string)), true
 
 	case "Mutation.removeProbeFromController":
 		if e.complexity.Mutation.RemoveProbeFromController == nil {
@@ -233,7 +235,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RemoveProbeFromController(childComplexity, args["address"].(*string)), true
+		return e.complexity.Mutation.RemoveProbeFromController(childComplexity, args["address"].(string)), true
+
+	case "Mutation.updateProbe":
+		if e.complexity.Mutation.UpdateProbe == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateProbe_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateProbe(childComplexity, args["id"].(string), args["controllerSettings"].(model.ControllerSettingsInput)), true
 
 	case "PidSettings.configured":
 		if e.complexity.PidSettings.Configured == nil {
@@ -535,9 +549,9 @@ type ManualSettings {
 }
 
 type Mutation {
-  assignProbe(name: String, address: String): TemperatureController
-  removeProbeFromController(address: String): TemperatureController
-
+  assignProbe(name: String!, address: String!): TemperatureController
+  removeProbeFromController(address: String!): TemperatureController
+  updateProbe(id: ID!, controllerSettings: ControllerSettingsInput!): TemperatureController
 }
 
 """The settings for heating or cooling on a temperature controller"""
@@ -565,7 +579,7 @@ type PidSettings {
 }
 
 """Used to configure a controller"""
-input ControllerSettings {
+input ControllerSettingsInput {
   """The name of the controller."""
   name: String
 
@@ -649,6 +663,9 @@ type TemperatureProbe {
 
 """The new settings for hysteria mode"""
 input HysteriaSettingsInput {
+  """Indicates if these settings have been configured yet"""
+  configured: Boolean
+
   """When this temperature is hit, turn on the cooling output"""
   maxTemp: String
 
@@ -661,6 +678,9 @@ input HysteriaSettingsInput {
 
 """The new manual settings for this controller"""
 input ManualSettingsInput {
+  """Indicates if these settings have been configured yet"""
+  configured: Boolean
+
   """The time for one duty cycle in seconds"""
   cycleTime: Int
 
@@ -682,12 +702,9 @@ input PidSettingsInput {
   """The derivative calculation value"""
   derivative: Float
 
-  """The ID of an object"""
-  id: ID!
-
   """The integral calculation value"""
   integral: Float
- 
+
   """The proportional calculation value"""
   proportional: Float
 }`, BuiltIn: false},
@@ -701,19 +718,19 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 func (ec *executionContext) field_Mutation_assignProbe_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
+	var arg0 string
 	if tmp, ok := rawArgs["name"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["name"] = arg0
-	var arg1 *string
+	var arg1 string
 	if tmp, ok := rawArgs["address"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("address"))
-		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -725,15 +742,39 @@ func (ec *executionContext) field_Mutation_assignProbe_args(ctx context.Context,
 func (ec *executionContext) field_Mutation_removeProbeFromController_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
+	var arg0 string
 	if tmp, ok := rawArgs["address"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("address"))
-		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["address"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateProbe_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	var arg1 model.ControllerSettingsInput
+	if tmp, ok := rawArgs["controllerSettings"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("controllerSettings"))
+		arg1, err = ec.unmarshalNControllerSettingsInput2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐControllerSettingsInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["controllerSettings"] = arg1
 	return args, nil
 }
 
@@ -1139,7 +1180,7 @@ func (ec *executionContext) _Mutation_assignProbe(ctx context.Context, field gra
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AssignProbe(rctx, args["name"].(*string), args["address"].(*string))
+		return ec.resolvers.Mutation().AssignProbe(rctx, args["name"].(string), args["address"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1178,7 +1219,46 @@ func (ec *executionContext) _Mutation_removeProbeFromController(ctx context.Cont
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RemoveProbeFromController(rctx, args["address"].(*string))
+		return ec.resolvers.Mutation().RemoveProbeFromController(rctx, args["address"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*devices.TemperatureController)
+	fc.Result = res
+	return ec.marshalOTemperatureController2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐTemperatureController(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_updateProbe(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateProbe_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateProbe(rctx, args["id"].(string), args["controllerSettings"].(model.ControllerSettingsInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1854,9 +1934,9 @@ func (ec *executionContext) _TemperatureController_mode(ctx context.Context, fie
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(devices.ControllerMode)
+	res := resTmp.(model.ControllerMode)
 	fc.Result = res
-	return ec.marshalOControllerMode2githubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐControllerMode(ctx, field.Selections, res)
+	return ec.marshalOControllerMode2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐControllerMode(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TemperatureController_name(ctx context.Context, field graphql.CollectedField, obj *devices.TemperatureController) (ret graphql.Marshaler) {
@@ -3173,8 +3253,8 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputControllerSettings(ctx context.Context, obj interface{}) (model.ControllerSettings, error) {
-	var it model.ControllerSettings
+func (ec *executionContext) unmarshalInputControllerSettingsInput(ctx context.Context, obj interface{}) (model.ControllerSettingsInput, error) {
+	var it model.ControllerSettingsInput
 	var asMap = obj.(map[string]interface{})
 
 	for k, v := range asMap {
@@ -3191,7 +3271,7 @@ func (ec *executionContext) unmarshalInputControllerSettings(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mode"))
-			it.Mode, err = ec.unmarshalOControllerMode2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐControllerMode(ctx, v)
+			it.Mode, err = ec.unmarshalOControllerMode2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐControllerMode(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -3239,6 +3319,14 @@ func (ec *executionContext) unmarshalInputHysteriaSettingsInput(ctx context.Cont
 
 	for k, v := range asMap {
 		switch k {
+		case "configured":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("configured"))
+			it.Configured, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "maxTemp":
 			var err error
 
@@ -3275,6 +3363,14 @@ func (ec *executionContext) unmarshalInputManualSettingsInput(ctx context.Contex
 
 	for k, v := range asMap {
 		switch k {
+		case "configured":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("configured"))
+			it.Configured, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "cycleTime":
 			var err error
 
@@ -3332,14 +3428,6 @@ func (ec *executionContext) unmarshalInputPidSettingsInput(ctx context.Context, 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("derivative"))
 			it.Derivative, err = ec.unmarshalOFloat2ᚖfloat64(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "id":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-			it.ID, err = ec.unmarshalNID2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -3478,6 +3566,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec._Mutation_assignProbe(ctx, field)
 		case "removeProbeFromController":
 			out.Values[i] = ec._Mutation_removeProbeFromController(ctx, field)
+		case "updateProbe":
+			out.Values[i] = ec._Mutation_updateProbe(ctx, field)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3958,6 +4048,11 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalNControllerSettingsInput2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐControllerSettingsInput(ctx context.Context, v interface{}) (model.ControllerSettingsInput, error) {
+	res, err := ec.unmarshalInputControllerSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -4241,26 +4336,26 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return graphql.MarshalBoolean(*v)
 }
 
-func (ec *executionContext) unmarshalOControllerMode2githubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐControllerMode(ctx context.Context, v interface{}) (devices.ControllerMode, error) {
+func (ec *executionContext) unmarshalOControllerMode2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐControllerMode(ctx context.Context, v interface{}) (model.ControllerMode, error) {
 	tmp, err := graphql.UnmarshalString(v)
-	res := devices.ControllerMode(tmp)
+	res := model.ControllerMode(tmp)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOControllerMode2githubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐControllerMode(ctx context.Context, sel ast.SelectionSet, v devices.ControllerMode) graphql.Marshaler {
+func (ec *executionContext) marshalOControllerMode2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐControllerMode(ctx context.Context, sel ast.SelectionSet, v model.ControllerMode) graphql.Marshaler {
 	return graphql.MarshalString(string(v))
 }
 
-func (ec *executionContext) unmarshalOControllerMode2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐControllerMode(ctx context.Context, v interface{}) (*devices.ControllerMode, error) {
+func (ec *executionContext) unmarshalOControllerMode2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐControllerMode(ctx context.Context, v interface{}) (*model.ControllerMode, error) {
 	if v == nil {
 		return nil, nil
 	}
 	tmp, err := graphql.UnmarshalString(v)
-	res := devices.ControllerMode(tmp)
+	res := model.ControllerMode(tmp)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOControllerMode2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐControllerMode(ctx context.Context, sel ast.SelectionSet, v *devices.ControllerMode) graphql.Marshaler {
+func (ec *executionContext) marshalOControllerMode2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐControllerMode(ctx context.Context, sel ast.SelectionSet, v *model.ControllerMode) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

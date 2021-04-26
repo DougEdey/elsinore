@@ -2,16 +2,12 @@
 
 package model
 
-import (
-	"github.com/dougedey/elsinore/devices"
-)
-
 // Used to configure a controller
-type ControllerSettings struct {
+type ControllerSettingsInput struct {
 	// The name of the controller.
 	Name *string `json:"name"`
 	// The new mode for the controller
-	Mode *devices.ControllerMode `json:"mode"`
+	Mode *ControllerMode `json:"mode"`
 	// The PID Settings for the cooling output
 	CoolSettings *PidSettingsInput `json:"coolSettings"`
 	// The PID settings for the heating output
@@ -24,6 +20,8 @@ type ControllerSettings struct {
 
 // The new settings for hysteria mode
 type HysteriaSettingsInput struct {
+	// Indicates if these settings have been configured yet
+	Configured *bool `json:"configured"`
 	// When this temperature is hit, turn on the cooling output
 	MaxTemp *string `json:"maxTemp"`
 	// When this temperature is hit, turn on the heating output
@@ -34,6 +32,8 @@ type HysteriaSettingsInput struct {
 
 // The new manual settings for this controller
 type ManualSettingsInput struct {
+	// Indicates if these settings have been configured yet
+	Configured *bool `json:"configured"`
 	// The time for one duty cycle in seconds
 	CycleTime *int `json:"cycleTime"`
 	// The manual duty cycle percentage for this controller
@@ -50,8 +50,6 @@ type PidSettingsInput struct {
 	Delay *int `json:"delay"`
 	// The derivative calculation value
 	Derivative *float64 `json:"derivative"`
-	// The ID of an object
-	ID string `json:"id"`
 	// The integral calculation value
 	Integral *float64 `json:"integral"`
 	// The proportional calculation value
