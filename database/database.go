@@ -56,7 +56,10 @@ func Create(dst interface{}) {
 // Save Update an instance of the supplied interface, this is a helper wrapper around the database so you don't need to check FetchDatabase
 func Save(dst interface{}) {
 	if datastore != nil {
-		datastore.Save(dst)
+		result := datastore.Session(&gorm.Session{FullSaveAssociations: true}).Debug().Save(dst)
+		if result.Error != nil {
+			log.Print("No")
+		}
 	} else {
 		log.Printf("No database configured, not saving %v", dst)
 	}

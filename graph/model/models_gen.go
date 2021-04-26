@@ -2,10 +2,56 @@
 
 package model
 
-// Used to configure a probe to a controller
-type ProbeSettings struct {
-	// The address of the probe to add to a controller
-	Address *string `json:"address"`
-	// The name of the controller to add the probe to.
+// Used to configure a controller
+type ControllerSettingsInput struct {
+	// The name of the controller.
 	Name *string `json:"name"`
+	// The new mode for the controller
+	Mode *ControllerMode `json:"mode"`
+	// The PID Settings for the cooling output
+	CoolSettings *PidSettingsInput `json:"coolSettings"`
+	// The PID settings for the heating output
+	HeatSettings *PidSettingsInput `json:"heatSettings"`
+	// The hysteria settings for controlling this temperature controller
+	HysteriaSettings *HysteriaSettingsInput `json:"hysteriaSettings"`
+	// The manual settings for this temperature controller
+	ManualSettings *ManualSettingsInput `json:"manualSettings"`
+}
+
+// The new settings for hysteria mode
+type HysteriaSettingsInput struct {
+	// Indicates if these settings have been configured yet
+	Configured *bool `json:"configured"`
+	// When this temperature is hit, turn on the cooling output
+	MaxTemp *string `json:"maxTemp"`
+	// When this temperature is hit, turn on the heating output
+	MinTemp *string `json:"minTemp"`
+	// The minimum amount of time to turn the outputs on for.
+	MinTime *int `json:"minTime"`
+}
+
+// The new manual settings for this controller
+type ManualSettingsInput struct {
+	// Indicates if these settings have been configured yet
+	Configured *bool `json:"configured"`
+	// The time for one duty cycle in seconds
+	CycleTime *int `json:"cycleTime"`
+	// The manual duty cycle percentage for this controller
+	DutyCycle *int `json:"dutyCycle"`
+}
+
+// The settings for heating or cooling on a temperature controller
+type PidSettingsInput struct {
+	// Indicates if these settings have been configured yet
+	Configured *bool `json:"configured"`
+	// The automatic cycle time in seconds
+	CycleTime *int `json:"cycleTime"`
+	// The minimum delay between turning an output on and off in seconds
+	Delay *int `json:"delay"`
+	// The derivative calculation value
+	Derivative *float64 `json:"derivative"`
+	// The integral calculation value
+	Integral *float64 `json:"integral"`
+	// The proportional calculation value
+	Proportional *float64 `json:"proportional"`
 }

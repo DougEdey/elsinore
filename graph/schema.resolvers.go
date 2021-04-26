@@ -21,21 +21,31 @@ func (r *manualSettingsResolver) ID(ctx context.Context, obj *devices.ManualSett
 	return fmt.Sprint(obj.ID), nil
 }
 
-func (r *mutationResolver) AssignProbe(ctx context.Context, settings *model.ProbeSettings) (*devices.TemperatureController, error) {
-	probe := devices.GetTemperature(*settings.Address)
+func (r *mutationResolver) AssignProbe(ctx context.Context, name string, address string) (*devices.TemperatureController, error) {
+	probe := devices.GetTemperature(address)
 	if probe != nil {
-		return devices.CreateTemperatureController(*settings.Name, probe)
+		return devices.CreateTemperatureController(name, probe)
 	}
-	return nil, fmt.Errorf("Coud not find a probe for %v", *settings.Address)
+	return nil, fmt.Errorf("could not find a probe for %v", address)
 }
 
-func (r *mutationResolver) RemoveProbeFromController(ctx context.Context, address *string) (*devices.TemperatureController, error) {
-	controller := devices.FindTemperatureControllerForProbe(*address)
+func (r *mutationResolver) RemoveProbeFromController(ctx context.Context, address string) (*devices.TemperatureController, error) {
+	controller := devices.FindTemperatureControllerForProbe(address)
 	if controller == nil {
-		return nil, fmt.Errorf("No controller could be found for %v", address)
+		return nil, fmt.Errorf("no controller could be found for %v", address)
 	}
-	error := controller.RemoveProbe(*address)
+	error := controller.RemoveProbe(address)
 	return controller, error
+}
+
+func (r *mutationResolver) UpdateProbe(ctx context.Context, id string, controllerSettings model.ControllerSettingsInput) (*devices.TemperatureController, error) {
+	controller := devices.FindTemperatureControllerByID(id)
+	if controller == nil {
+		return nil, fmt.Errorf("no controller could be found for: %v", id)
+	}
+
+	err := controller.ApplySettings(controllerSettings)
+	return controller, err
 }
 
 func (r *pidSettingsResolver) ID(ctx context.Context, obj *devices.PidSettings) (string, error) {
@@ -47,7 +57,7 @@ func (r *queryResolver) Probe(ctx context.Context, address *string) (*devices.Te
 	if device != nil {
 		return device, nil
 	}
-	return nil, fmt.Errorf("No device found for address %v", *address)
+	return nil, fmt.Errorf("no device found for address %v", *address)
 }
 
 func (r *queryResolver) ProbeList(ctx context.Context) ([]*devices.TemperatureProbe, error) {
@@ -68,7 +78,7 @@ func (r *queryResolver) FetchProbes(ctx context.Context, addresses []*string) ([
 
 	missingError := (error)(nil)
 	if len(missingAddresses) > 0 {
-		missingError = fmt.Errorf("No device(s) found for address(es): %v", missingAddresses)
+		missingError = fmt.Errorf("no device(s) found for address(es): %v", missingAddresses)
 	}
 
 	return deviceList, missingError

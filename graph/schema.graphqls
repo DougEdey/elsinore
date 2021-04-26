@@ -17,7 +17,7 @@ scalar Time
 
 """The settings for hysteria mode"""
 type HysteriaSettings {
-  """Indicates if these settings have been configrued yet."""
+  """Indicates if these settings have been configured yet."""
   configured: Boolean
 
   """The ID of an object"""
@@ -35,7 +35,7 @@ type HysteriaSettings {
 
 """The manual settings for this controller"""
 type ManualSettings {
-  """Indicates if these settings have been configrued yet."""
+  """Indicates if these settings have been configured yet."""
   configured: Boolean
 
   """The time for one duty cycle in seconds"""
@@ -49,8 +49,9 @@ type ManualSettings {
 }
 
 type Mutation {
-  assignProbe(settings: probeSettings): TemperatureController
-  removeProbeFromController(address: String): TemperatureController
+  assignProbe(name: String!, address: String!): TemperatureController
+  removeProbeFromController(address: String!): TemperatureController
+  updateProbe(id: ID!, controllerSettings: ControllerSettingsInput!): TemperatureController
 }
 
 """The settings for heating or cooling on a temperature controller"""
@@ -77,13 +78,25 @@ type PidSettings {
   proportional: Float
 }
 
-"""Used to configure a probe to a controller"""
-input probeSettings {
-  """The address of the probe to add to a controller"""
-  address: String
-
-  """The name of the controller to add the probe to."""
+"""Used to configure a controller"""
+input ControllerSettingsInput {
+  """The name of the controller."""
   name: String
+
+  """The new mode for the controller"""
+  mode: ControllerMode
+
+  """The PID Settings for the cooling output"""
+  coolSettings: PidSettingsInput
+
+  """The PID settings for the heating output"""
+  heatSettings: PidSettingsInput
+
+  """The hysteria settings for controlling this temperature controller"""
+  hysteriaSettings: HysteriaSettingsInput
+
+  """The manual settings for this temperature controller"""
+  manualSettings: ManualSettingsInput
 }
 
 type Query {
@@ -148,3 +161,50 @@ type TemperatureProbe {
   reading: String
 }
 
+"""The new settings for hysteria mode"""
+input HysteriaSettingsInput {
+  """Indicates if these settings have been configured yet"""
+  configured: Boolean
+
+  """When this temperature is hit, turn on the cooling output"""
+  maxTemp: String
+
+  """When this temperature is hit, turn on the heating output"""
+  minTemp: String
+
+  """The minimum amount of time to turn the outputs on for."""
+  minTime: Int
+}
+
+"""The new manual settings for this controller"""
+input ManualSettingsInput {
+  """Indicates if these settings have been configured yet"""
+  configured: Boolean
+
+  """The time for one duty cycle in seconds"""
+  cycleTime: Int
+
+  """The manual duty cycle percentage for this controller"""
+  dutyCycle: Int
+}
+
+"""The settings for heating or cooling on a temperature controller"""
+input PidSettingsInput {
+  """Indicates if these settings have been configured yet"""
+  configured: Boolean
+
+  """The automatic cycle time in seconds"""
+  cycleTime: Int
+
+  """The minimum delay between turning an output on and off in seconds"""
+  delay: Int
+
+  """The derivative calculation value"""
+  derivative: Float
+
+  """The integral calculation value"""
+  integral: Float
+
+  """The proportional calculation value"""
+  proportional: Float
+}

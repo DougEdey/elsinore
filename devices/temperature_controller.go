@@ -1,11 +1,13 @@
 package devices
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/dougedey/elsinore/database"
+	"github.com/dougedey/elsinore/graph/model"
 	"gorm.io/gorm"
 	"periph.io/x/periph/conn/physic"
 )
@@ -15,14 +17,17 @@ var controllers []*TemperatureController
 // TemperatureController defines a mapping of temperature probes to their control settings
 type TemperatureController struct {
 	gorm.Model
-	Name                    string
-	LastReadings            []physic.Temperature `gorm:"-"`
-	TemperatureProbes       []*TemperatureProbe
-	CoolSettings            PidSettings
-	HeatSettings            PidSettings
-	HysteriaSettings        HysteriaSettings
+	Name              string
+	LastReadings      []physic.Temperature `gorm:"-"`
+	TemperatureProbes []*TemperatureProbe
+	CoolSettings      PidSettings `gorm:"polymorphic:TemperatureController;polymorphicValue:coolSettings"`
+	// CoolSettingsID					uint
+	HeatSettings PidSettings `gorm:"polymorphic:TemperatureController;polymorphicValue:heatSettings"`
+	// HeatSettingsID					uint
+	HysteriaSettings HysteriaSettings
+	// HysteriaSettingsID			uint
 	ManualSettings          ManualSettings
-	Mode                    ControllerMode // Mode of this controller
+	Mode                    model.ControllerMode // Mode of this controller
 	DutyCycle               int64
 	CalculatedDuty          int64
 	SetPointRaw             physic.Temperature
@@ -31,19 +36,19 @@ type TemperatureController struct {
 	integralError           float64   `gorm:"-"`
 	derivativeFactor        float64   `gorm:"-"`
 	prevDiff                float64   `gorm:"-"` // Always in Fahrenheit (internal calculaiton)
-	TemperatureControllerID uint
 }
 
 // PidSettings define the actual values for heating/cooling as persisted
 type PidSettings struct {
 	gorm.Model
-	Proportional            float64
-	Integral                float64
-	Derivative              float64
-	CycleTime               int64
-	Delay                   int64
-	Configured              bool
-	TemperatureControllerID uint
+	Proportional              float64
+	Integral                  float64
+	Derivative                float64
+	CycleTime                 int64
+	Delay                     int64
+	Configured                bool
+	TemperatureControllerID   uint
+	TemperatureControllerType string
 }
 
 // HysteriaSettings are used for Hysteria mode
@@ -64,9 +69,6 @@ type ManualSettings struct {
 	Configured              bool
 	TemperatureControllerID uint
 }
-
-// ControllerMode Auto, Manual, Off, Hysteria
-type ControllerMode string
 
 // FindTemperatureControllerForProbe returns the pid controller associated with the TemperatureProbe
 func FindTemperatureControllerForProbe(physAddr string) *TemperatureController {
@@ -90,6 +92,26 @@ func FindTemperatureControllerByName(name string) *TemperatureController {
 	return nil
 }
 
+// FindTemperatureControllerByID - Find a temperature controller by id, preloading everything
+func FindTemperatureControllerByID(id string) *TemperatureController {
+	var controller *TemperatureController
+	if database.FetchDatabase() == nil {
+		log.Printf("No Database configured, cannot lookup by Id")
+		return nil
+	}
+	result := database.FetchDatabase().Debug().Joins("ManualSettings").Joins("HysteriaSettings").First(&controller, id)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil
+	}
+	database.FetchDatabase().Debug().
+		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "coolSettings", controller.ID).
+		First(&controller.CoolSettings)
+	database.FetchDatabase().Debug().
+		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "heatSettings", controller.ID).
+		First(&controller.HeatSettings)
+	return controller
+}
+
 // ClearControllers reset the map of controllers
 func ClearControllers() {
 	controllers = nil
@@ -108,7 +130,7 @@ func CreateTemperatureController(name string, probe *TemperatureProbe) (*Tempera
 		if existingControllerForProbe == controller {
 			return controller, nil
 		}
-		return nil, fmt.Errorf("Temperature Controller (%v) exists for this probe, trying removing it first", existingControllerForProbe)
+		return nil, fmt.Errorf("temperature Controller (%v) exists for this probe, trying removing it first", existingControllerForProbe)
 	}
 
 	if controller == nil {
@@ -122,6 +144,7 @@ func CreateTemperatureController(name string, probe *TemperatureProbe) (*Tempera
 	return controller, nil
 }
 
+// RemoveProbe removes a temperature probe from this controller
 func (c *TemperatureController) RemoveProbe(physAddr string) error {
 	for i, probe := range c.TemperatureProbes {
 		if probe.PhysAddr == physAddr {
@@ -130,7 +153,8 @@ func (c *TemperatureController) RemoveProbe(physAddr string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Could not find a probe with address %v", physAddr)
+
+	return fmt.Errorf("could not find a probe with address %v", physAddr)
 }
 
 // UpdateOutput updates the temperatures and decides how to control the outputs
@@ -211,4 +235,109 @@ func (h *HysteriaSettings) MaxTemp() string {
 // MinTemp -> For hysteria, this is the string for the min temp to turn on
 func (h *HysteriaSettings) MinTemp() string {
 	return h.MinTempRaw.String()
+}
+
+// ApplySettings - Update the current temperature controller settings
+func (c *TemperatureController) ApplySettings(newSettings model.ControllerSettingsInput) error {
+	err := c.CoolSettings.ApplySettings(newSettings.CoolSettings)
+	if err != nil {
+		return err
+	}
+
+	err = c.HeatSettings.ApplySettings(newSettings.HeatSettings)
+	if err != nil {
+		return err
+	}
+
+	err = c.ManualSettings.ApplySettings(newSettings.ManualSettings)
+	if err != nil {
+		return err
+	}
+
+	err = c.HysteriaSettings.ApplySettings(newSettings.HysteriaSettings)
+	if err != nil {
+		return err
+	}
+
+	if newSettings.Name != nil {
+		c.Name = *newSettings.Name
+	}
+
+	if newSettings.Mode != nil {
+		c.Mode = *newSettings.Mode
+	}
+	database.Save(c)
+	return nil
+}
+
+// ApplySettings - Update the current pid settings
+func (s *PidSettings) ApplySettings(newSettings *model.PidSettingsInput) error {
+	if newSettings == nil {
+		return nil
+	}
+	if newSettings.Configured != nil {
+		s.Configured = *newSettings.Configured
+	}
+	if newSettings.CycleTime != nil {
+		s.CycleTime = int64(*newSettings.CycleTime)
+	}
+	if newSettings.Delay != nil {
+		s.Delay = int64(*newSettings.Delay)
+	}
+	if newSettings.CycleTime != nil {
+		s.CycleTime = int64(*newSettings.CycleTime)
+	}
+	if newSettings.Proportional != nil {
+		s.Proportional = *newSettings.Proportional
+	}
+	if newSettings.Integral != nil {
+		s.Integral = *newSettings.Integral
+	}
+	if newSettings.Derivative != nil {
+		s.Derivative = *newSettings.Derivative
+	}
+	return nil
+}
+
+// ApplySettings - Update the current manual settings
+func (s *ManualSettings) ApplySettings(newSettings *model.ManualSettingsInput) error {
+	if newSettings == nil {
+		return nil
+	}
+	if newSettings.Configured != nil {
+		s.Configured = *newSettings.Configured
+	}
+	if newSettings.CycleTime != nil {
+		s.CycleTime = int64(*newSettings.CycleTime)
+	}
+	if newSettings.DutyCycle != nil {
+		s.DutyCycle = int64(*newSettings.DutyCycle)
+	}
+	return nil
+}
+
+// ApplySettings - Update the current hysteria settings
+func (h *HysteriaSettings) ApplySettings(newSettings *model.HysteriaSettingsInput) error {
+	if newSettings == nil {
+		return nil
+	}
+	if newSettings.Configured != nil {
+		h.Configured = *newSettings.Configured
+	}
+	if newSettings.MaxTemp != nil {
+		err := h.MaxTempRaw.Set(*newSettings.MaxTemp)
+		if err != nil {
+			return err
+		}
+	}
+	if newSettings.MinTemp != nil {
+		err := h.MinTempRaw.Set(*newSettings.MinTemp)
+		if err != nil {
+			return err
+		}
+	}
+	if newSettings.MinTime != nil {
+		h.MinTime = int64(*newSettings.MinTime)
+	}
+	return nil
 }
