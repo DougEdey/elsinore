@@ -204,7 +204,7 @@ func TestAssignProbeMutations(t *testing.T) {
 	})
 
 	var removeResp struct {
-		RemoveProbeFromController struct {
+		RemoveProbeFromTemperatureController struct {
 			ID   string
 			Name string
 		}
@@ -217,26 +217,26 @@ func TestAssignProbeMutations(t *testing.T) {
 		}
 	}
 
-	t.Run("removeProbeFromController removes a probe from the controller", func(t *testing.T) {
+	t.Run("removeProbeFromTemperatureController removes a probe from the controller", func(t *testing.T) {
 		c.MustPost(`
 		mutation {
-			removeProbeFromController(address: "ARealAddress") {
+			removeProbeFromTemperatureController(address: "ARealAddress") {
 				id
 				name
 			}
 		}
 		`, &removeResp)
 
-		require.Equal(t, "1", removeResp.RemoveProbeFromController.ID)
+		require.Equal(t, "1", removeResp.RemoveProbeFromTemperatureController.ID)
 	})
 }
 
-func TestUpdateProbeMutations(t *testing.T) {
+func TestUpdateTemperatureControllerMutations(t *testing.T) {
 	setupTestDb(t)
 	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}})))
 
 	var updateResp struct {
-		UpdateProbe struct {
+		UpdateTemperatureController struct {
 			ID           string
 			Name         string
 			Mode         model.ControllerMode
@@ -270,10 +270,10 @@ func TestUpdateProbeMutations(t *testing.T) {
 		}
 	}
 
-	t.Run("updateProbe with an invalid ID returns an error", func(t *testing.T) {
+	t.Run("updateTemperatureController with an invalid ID returns an error", func(t *testing.T) {
 		err := c.Post(`
 		mutation {
-			updateProbe(id: "1", controllerSettings: {}) {
+			updateTemperatureController(id: "1", controllerSettings: {}) {
 				id
 				name
 			}
@@ -281,7 +281,7 @@ func TestUpdateProbeMutations(t *testing.T) {
 		`, &updateResp)
 
 		require.Equal(t,
-			`[{"message":"no controller could be found for: 1","path":["updateProbe"]}]`,
+			`[{"message":"no controller could be found for: 1","path":["updateTemperatureController"]}]`,
 			err.Error(),
 		)
 	})
@@ -292,28 +292,28 @@ func TestUpdateProbeMutations(t *testing.T) {
 		Address:  onewire.Address(12345),
 	})
 
-	t.Run("updateProbe updates the name and makes no other changes", func(t *testing.T) {
+	t.Run("updateTemperatureController updates the name and makes no other changes", func(t *testing.T) {
 		c.MustPost(`
 		mutation {
-			updateProbe(id: "1", controllerSettings: { name: "Updated name" }) {
+			updateTemperatureController(id: "1", controllerSettings: { name: "Updated name" }) {
 				id
 				name
 			}
 		}
 		`, &updateResp)
 
-		require.Equal(t, "1", updateResp.UpdateProbe.ID)
-		require.Equal(t, "Updated name", updateResp.UpdateProbe.Name)
-		require.Nil(t, updateResp.UpdateProbe.CoolSettings)
-		require.Nil(t, updateResp.UpdateProbe.HeatSettings)
-		require.Nil(t, updateResp.UpdateProbe.ManualSettings)
-		require.Nil(t, updateResp.UpdateProbe.HysteriaSettings)
+		require.Equal(t, "1", updateResp.UpdateTemperatureController.ID)
+		require.Equal(t, "Updated name", updateResp.UpdateTemperatureController.Name)
+		require.Nil(t, updateResp.UpdateTemperatureController.CoolSettings)
+		require.Nil(t, updateResp.UpdateTemperatureController.HeatSettings)
+		require.Nil(t, updateResp.UpdateTemperatureController.ManualSettings)
+		require.Nil(t, updateResp.UpdateTemperatureController.HysteriaSettings)
 	})
 
-	t.Run("updateProbe creates Cool settings", func(t *testing.T) {
+	t.Run("updateTemperatureController creates Cool settings", func(t *testing.T) {
 		err := c.Post(`
 		mutation {
-			updateProbe(id: "1", controllerSettings: { name: "Updated name", coolSettings: { configured: true, cycleTime: 1 } }) {
+			updateTemperatureController(id: "1", controllerSettings: { name: "Updated name", coolSettings: { configured: true, cycleTime: 1 } }) {
 				id
 				name
 				coolSettings {
@@ -326,21 +326,21 @@ func TestUpdateProbeMutations(t *testing.T) {
 		`, &updateResp)
 
 		require.Nil(t, err)
-		require.Equal(t, "1", updateResp.UpdateProbe.ID)
-		require.Equal(t, "Updated name", updateResp.UpdateProbe.Name)
-		require.NotNil(t, updateResp.UpdateProbe.CoolSettings)
-		require.Equal(t, "1", *updateResp.UpdateProbe.CoolSettings.Id)
-		require.Equal(t, 1, *updateResp.UpdateProbe.CoolSettings.CycleTime)
-		require.Equal(t, 0, *updateResp.UpdateProbe.CoolSettings.Delay)
-		require.Nil(t, updateResp.UpdateProbe.HeatSettings)
-		require.Nil(t, updateResp.UpdateProbe.ManualSettings)
-		require.Nil(t, updateResp.UpdateProbe.HysteriaSettings)
+		require.Equal(t, "1", updateResp.UpdateTemperatureController.ID)
+		require.Equal(t, "Updated name", updateResp.UpdateTemperatureController.Name)
+		require.NotNil(t, updateResp.UpdateTemperatureController.CoolSettings)
+		require.Equal(t, "1", *updateResp.UpdateTemperatureController.CoolSettings.Id)
+		require.Equal(t, 1, *updateResp.UpdateTemperatureController.CoolSettings.CycleTime)
+		require.Equal(t, 0, *updateResp.UpdateTemperatureController.CoolSettings.Delay)
+		require.Nil(t, updateResp.UpdateTemperatureController.HeatSettings)
+		require.Nil(t, updateResp.UpdateTemperatureController.ManualSettings)
+		require.Nil(t, updateResp.UpdateTemperatureController.HysteriaSettings)
 	})
 
-	t.Run("updateProbe creates Heat settings", func(t *testing.T) {
+	t.Run("updateTemperatureController creates Heat settings", func(t *testing.T) {
 		err := c.Post(`
 		mutation {
-			updateProbe(id: "1", controllerSettings: { name: "Updated name", heatSettings: { configured: true, cycleTime: 4 } }) {
+			updateTemperatureController(id: "1", controllerSettings: { name: "Updated name", heatSettings: { configured: true, cycleTime: 4 } }) {
 				id
 				name
 				coolSettings {
@@ -358,23 +358,23 @@ func TestUpdateProbeMutations(t *testing.T) {
 		`, &updateResp)
 
 		require.Nil(t, err)
-		require.Equal(t, "1", updateResp.UpdateProbe.ID)
-		require.Equal(t, "Updated name", updateResp.UpdateProbe.Name)
-		require.NotNil(t, updateResp.UpdateProbe.CoolSettings)
-		require.Equal(t, "1", *updateResp.UpdateProbe.CoolSettings.Id)
-		require.Equal(t, 1, *updateResp.UpdateProbe.CoolSettings.CycleTime)
-		require.Equal(t, 0, *updateResp.UpdateProbe.CoolSettings.Delay)
-		require.Equal(t, "2", *updateResp.UpdateProbe.HeatSettings.Id)
-		require.Equal(t, 4, *updateResp.UpdateProbe.HeatSettings.CycleTime)
-		require.Equal(t, 0, *updateResp.UpdateProbe.HeatSettings.Delay)
-		require.Nil(t, updateResp.UpdateProbe.ManualSettings)
-		require.Nil(t, updateResp.UpdateProbe.HysteriaSettings)
+		require.Equal(t, "1", updateResp.UpdateTemperatureController.ID)
+		require.Equal(t, "Updated name", updateResp.UpdateTemperatureController.Name)
+		require.NotNil(t, updateResp.UpdateTemperatureController.CoolSettings)
+		require.Equal(t, "1", *updateResp.UpdateTemperatureController.CoolSettings.Id)
+		require.Equal(t, 1, *updateResp.UpdateTemperatureController.CoolSettings.CycleTime)
+		require.Equal(t, 0, *updateResp.UpdateTemperatureController.CoolSettings.Delay)
+		require.Equal(t, "2", *updateResp.UpdateTemperatureController.HeatSettings.Id)
+		require.Equal(t, 4, *updateResp.UpdateTemperatureController.HeatSettings.CycleTime)
+		require.Equal(t, 0, *updateResp.UpdateTemperatureController.HeatSettings.Delay)
+		require.Nil(t, updateResp.UpdateTemperatureController.ManualSettings)
+		require.Nil(t, updateResp.UpdateTemperatureController.HysteriaSettings)
 	})
 
-	t.Run("updateProbe creates Manual settings", func(t *testing.T) {
+	t.Run("updateTemperatureController creates Manual settings", func(t *testing.T) {
 		err := c.Post(`
 		mutation {
-			updateProbe(id: "1", controllerSettings: { name: "Updated name", manualSettings: { configured: true, cycleTime: 5, dutyCycle: 45 } }) {
+			updateTemperatureController(id: "1", controllerSettings: { name: "Updated name", manualSettings: { configured: true, cycleTime: 5, dutyCycle: 45 } }) {
 				id
 				name
 				coolSettings {
@@ -397,25 +397,25 @@ func TestUpdateProbeMutations(t *testing.T) {
 		`, &updateResp)
 
 		require.Nil(t, err)
-		require.Equal(t, "1", updateResp.UpdateProbe.ID)
-		require.Equal(t, "Updated name", updateResp.UpdateProbe.Name)
-		require.NotNil(t, updateResp.UpdateProbe.CoolSettings)
-		require.Equal(t, "1", *updateResp.UpdateProbe.CoolSettings.Id)
-		require.Equal(t, 1, *updateResp.UpdateProbe.CoolSettings.CycleTime)
-		require.Equal(t, 0, *updateResp.UpdateProbe.CoolSettings.Delay)
-		require.Equal(t, "2", *updateResp.UpdateProbe.HeatSettings.Id)
-		require.Equal(t, 4, *updateResp.UpdateProbe.HeatSettings.CycleTime)
-		require.Equal(t, 0, *updateResp.UpdateProbe.HeatSettings.Delay)
-		require.Equal(t, "1", *updateResp.UpdateProbe.ManualSettings.Id)
-		require.Equal(t, 5, *updateResp.UpdateProbe.ManualSettings.CycleTime)
-		require.Equal(t, 45, *updateResp.UpdateProbe.ManualSettings.DutyCycle)
-		require.Nil(t, updateResp.UpdateProbe.HysteriaSettings)
+		require.Equal(t, "1", updateResp.UpdateTemperatureController.ID)
+		require.Equal(t, "Updated name", updateResp.UpdateTemperatureController.Name)
+		require.NotNil(t, updateResp.UpdateTemperatureController.CoolSettings)
+		require.Equal(t, "1", *updateResp.UpdateTemperatureController.CoolSettings.Id)
+		require.Equal(t, 1, *updateResp.UpdateTemperatureController.CoolSettings.CycleTime)
+		require.Equal(t, 0, *updateResp.UpdateTemperatureController.CoolSettings.Delay)
+		require.Equal(t, "2", *updateResp.UpdateTemperatureController.HeatSettings.Id)
+		require.Equal(t, 4, *updateResp.UpdateTemperatureController.HeatSettings.CycleTime)
+		require.Equal(t, 0, *updateResp.UpdateTemperatureController.HeatSettings.Delay)
+		require.Equal(t, "1", *updateResp.UpdateTemperatureController.ManualSettings.Id)
+		require.Equal(t, 5, *updateResp.UpdateTemperatureController.ManualSettings.CycleTime)
+		require.Equal(t, 45, *updateResp.UpdateTemperatureController.ManualSettings.DutyCycle)
+		require.Nil(t, updateResp.UpdateTemperatureController.HysteriaSettings)
 	})
 
-	t.Run("updateProbe creates Manual settings", func(t *testing.T) {
+	t.Run("updateTemperatureController creates Manual settings", func(t *testing.T) {
 		err := c.Post(`
 		mutation {
-			updateProbe(id: "1", controllerSettings: { name: "Updated name", hysteriaSettings: { configured: true, maxTemp: "103C" } }) {
+			updateTemperatureController(id: "1", controllerSettings: { name: "Updated name", hysteriaSettings: { configured: true, maxTemp: "103C" } }) {
 				id
 				name
 				coolSettings {
@@ -442,19 +442,19 @@ func TestUpdateProbeMutations(t *testing.T) {
 		`, &updateResp)
 
 		require.Nil(t, err)
-		require.Equal(t, "1", updateResp.UpdateProbe.ID)
-		require.Equal(t, "Updated name", updateResp.UpdateProbe.Name)
-		require.NotNil(t, updateResp.UpdateProbe.CoolSettings)
-		require.Equal(t, "1", *updateResp.UpdateProbe.CoolSettings.Id)
-		require.Equal(t, 1, *updateResp.UpdateProbe.CoolSettings.CycleTime)
-		require.Equal(t, 0, *updateResp.UpdateProbe.CoolSettings.Delay)
-		require.Equal(t, "2", *updateResp.UpdateProbe.HeatSettings.Id)
-		require.Equal(t, 4, *updateResp.UpdateProbe.HeatSettings.CycleTime)
-		require.Equal(t, 0, *updateResp.UpdateProbe.HeatSettings.Delay)
-		require.Equal(t, "1", *updateResp.UpdateProbe.ManualSettings.Id)
-		require.Equal(t, 5, *updateResp.UpdateProbe.ManualSettings.CycleTime)
-		require.Equal(t, 45, *updateResp.UpdateProbe.ManualSettings.DutyCycle)
-		require.Equal(t, "1", *updateResp.UpdateProbe.HysteriaSettings.Id)
-		require.Equal(t, "103°C", *updateResp.UpdateProbe.HysteriaSettings.MaxTemp)
+		require.Equal(t, "1", updateResp.UpdateTemperatureController.ID)
+		require.Equal(t, "Updated name", updateResp.UpdateTemperatureController.Name)
+		require.NotNil(t, updateResp.UpdateTemperatureController.CoolSettings)
+		require.Equal(t, "1", *updateResp.UpdateTemperatureController.CoolSettings.Id)
+		require.Equal(t, 1, *updateResp.UpdateTemperatureController.CoolSettings.CycleTime)
+		require.Equal(t, 0, *updateResp.UpdateTemperatureController.CoolSettings.Delay)
+		require.Equal(t, "2", *updateResp.UpdateTemperatureController.HeatSettings.Id)
+		require.Equal(t, 4, *updateResp.UpdateTemperatureController.HeatSettings.CycleTime)
+		require.Equal(t, 0, *updateResp.UpdateTemperatureController.HeatSettings.Delay)
+		require.Equal(t, "1", *updateResp.UpdateTemperatureController.ManualSettings.Id)
+		require.Equal(t, 5, *updateResp.UpdateTemperatureController.ManualSettings.CycleTime)
+		require.Equal(t, 45, *updateResp.UpdateTemperatureController.ManualSettings.DutyCycle)
+		require.Equal(t, "1", *updateResp.UpdateTemperatureController.HysteriaSettings.Id)
+		require.Equal(t, "103°C", *updateResp.UpdateTemperatureController.HysteriaSettings.MaxTemp)
 	})
 }

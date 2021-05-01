@@ -29,7 +29,7 @@ func (r *mutationResolver) AssignProbe(ctx context.Context, name string, address
 	return nil, fmt.Errorf("could not find a probe for %v", address)
 }
 
-func (r *mutationResolver) RemoveProbeFromController(ctx context.Context, address string) (*devices.TemperatureController, error) {
+func (r *mutationResolver) RemoveProbeFromTemperatureController(ctx context.Context, address string) (*devices.TemperatureController, error) {
 	controller := devices.FindTemperatureControllerForProbe(address)
 	if controller == nil {
 		return nil, fmt.Errorf("no controller could be found for %v", address)
@@ -38,7 +38,7 @@ func (r *mutationResolver) RemoveProbeFromController(ctx context.Context, addres
 	return controller, error
 }
 
-func (r *mutationResolver) UpdateProbe(ctx context.Context, id string, controllerSettings model.ControllerSettingsInput) (*devices.TemperatureController, error) {
+func (r *mutationResolver) UpdateTemperatureController(ctx context.Context, id string, controllerSettings model.TemperatureControllerSettingsInput) (*devices.TemperatureController, error) {
 	controller := devices.FindTemperatureControllerByID(id)
 	if controller == nil {
 		return nil, fmt.Errorf("no controller could be found for: %v", id)
@@ -46,6 +46,10 @@ func (r *mutationResolver) UpdateProbe(ctx context.Context, id string, controlle
 
 	err := controller.ApplySettings(controllerSettings)
 	return controller, err
+}
+
+func (r *mutationResolver) DeleteController(ctx context.Context, id string) (*model.DeleteTemperatureControllerReturnType, error) {
+	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *pidSettingsResolver) ID(ctx context.Context, obj *devices.PidSettings) (string, error) {

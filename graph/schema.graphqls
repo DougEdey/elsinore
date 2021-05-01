@@ -50,8 +50,9 @@ type ManualSettings {
 
 type Mutation {
   assignProbe(name: String!, address: String!): TemperatureController
-  removeProbeFromController(address: String!): TemperatureController
-  updateProbe(id: ID!, controllerSettings: ControllerSettingsInput!): TemperatureController
+  removeProbeFromTemperatureController(address: String!): TemperatureController
+  updateTemperatureController(id: ID!, controllerSettings: TemperatureControllerSettingsInput!): TemperatureController
+  deleteTemperatureController(id: ID!): DeleteTemperatureControllerReturnType
 }
 
 """The settings for heating or cooling on a temperature controller"""
@@ -79,7 +80,7 @@ type PidSettings {
 }
 
 """Used to configure a controller"""
-input ControllerSettingsInput {
+input TemperatureControllerSettingsInput {
   """The name of the controller."""
   name: String
 
@@ -207,4 +208,12 @@ input PidSettingsInput {
 
   """The proportional calculation value"""
   proportional: Float
+}
+
+"""The deleted controller"""
+type DeleteTemperatureControllerReturnType {
+  """The ID of the deleted Controller"""
+  id: ID!
+  """Temperatures Probes that were associated with this controller"""
+  temperatureProbes: [ID]
 }

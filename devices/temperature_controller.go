@@ -238,7 +238,7 @@ func (h *HysteriaSettings) MinTemp() string {
 }
 
 // ApplySettings - Update the current temperature controller settings
-func (c *TemperatureController) ApplySettings(newSettings model.ControllerSettingsInput) error {
+func (c *TemperatureController) ApplySettings(newSettings model.TemperatureControllerSettingsInput) error {
 	err := c.CoolSettings.ApplySettings(newSettings.CoolSettings)
 	if err != nil {
 		return err

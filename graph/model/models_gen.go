@@ -3,7 +3,7 @@
 package model
 
 // Used to configure a controller
-type ControllerSettingsInput struct {
+type TemperatureControllerSettingsInput struct {
 	// The name of the controller.
 	Name *string `json:"name"`
 	// The new mode for the controller
