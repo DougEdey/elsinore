@@ -3,7 +3,7 @@ package model
 // ControllerMode Auto, Manual, Off, Hysteria
 type ControllerMode string
 
-// The deleted controller
+// DeleteTemperatureControllerReturnType The deleted controller
 type DeleteTemperatureControllerReturnType struct {
 	// The ID of the deleted Controller
 	ID string `json:"id"`

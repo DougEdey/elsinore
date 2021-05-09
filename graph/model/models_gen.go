@@ -2,21 +2,9 @@
 
 package model
 
-// Used to configure a controller
-type TemperatureControllerSettingsInput struct {
-	// The name of the controller.
-	Name *string `json:"name"`
-	// The new mode for the controller
-	Mode *ControllerMode `json:"mode"`
-	// The PID Settings for the cooling output
-	CoolSettings *PidSettingsInput `json:"coolSettings"`
-	// The PID settings for the heating output
-	HeatSettings *PidSettingsInput `json:"heatSettings"`
-	// The hysteria settings for controlling this temperature controller
-	HysteriaSettings *HysteriaSettingsInput `json:"hysteriaSettings"`
-	// The manual settings for this temperature controller
-	ManualSettings *ManualSettingsInput `json:"manualSettings"`
-}
+import (
+	"time"
+)
 
 // The new settings for hysteria mode
 type HysteriaSettingsInput struct {
@@ -54,4 +42,34 @@ type PidSettingsInput struct {
 	Integral *float64 `json:"integral"`
 	// The proportional calculation value
 	Proportional *float64 `json:"proportional"`
+}
+
+// A device that reads a temperature and is assigned to a temperature controller
+type TempProbeDetails struct {
+	// The ID of an object
+	ID string `json:"id"`
+	// The physical address of this probe
+	PhysAddr *string `json:"physAddr"`
+	// The value of the reading
+	Reading *string `json:"reading"`
+	// The friendly name of this probe
+	Name *string `json:"name"`
+	// The time that this reading was updated
+	Updated *time.Time `json:"updated"`
+}
+
+// Used to configure a controller
+type TemperatureControllerSettingsInput struct {
+	// The name of the controller.
+	Name *string `json:"name"`
+	// The new mode for the controller
+	Mode *ControllerMode `json:"mode"`
+	// The PID Settings for the cooling output
+	CoolSettings *PidSettingsInput `json:"coolSettings"`
+	// The PID settings for the heating output
+	HeatSettings *PidSettingsInput `json:"heatSettings"`
+	// The hysteria settings for controlling this temperature controller
+	HysteriaSettings *HysteriaSettingsInput `json:"hysteriaSettings"`
+	// The manual settings for this temperature controller
+	ManualSettings *ManualSettingsInput `json:"manualSettings"`
 }

@@ -147,11 +147,11 @@ type TemperatureController {
   setPoint: String
 
   """The probes assigned to this controller"""
-  temperatureProbes: [TemperatureProbe]
+  tempProbeDetails: [TempProbeDetails]
 }
 
-"""A device that reads a temperature"""
-type TemperatureProbe {
+"""A device that reads a temperature and is assigned to a temperature controller"""
+type TempProbeDetails {
   """The ID of an object"""
   id: ID!
 
@@ -160,7 +160,26 @@ type TemperatureProbe {
 
   """The value of the reading"""
   reading: String
+
+  """The friendly name of this probe"""
+  name: String
+
+  """The time that this reading was updated"""
+  updated: Time
 }
+
+"""A device that reads a temperature"""
+type TemperatureProbe {
+  """The physical address of this probe"""
+  physAddr: String
+
+  """The value of the reading"""
+  reading: String
+
+  """The time that this reading was updated"""
+  updated: Time
+}
+
 
 """The new settings for hysteria mode"""
 input HysteriaSettingsInput {
@@ -215,5 +234,5 @@ type DeleteTemperatureControllerReturnType {
   """The ID of the deleted Controller"""
   id: ID!
   """Temperatures Probes that were associated with this controller"""
-  temperatureProbes: [ID]
+  temperatureProbes: [String]
 }

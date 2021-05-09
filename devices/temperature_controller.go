@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/dougedey/elsinore/database"
@@ -14,13 +15,24 @@ import (
 
 var controllers []*TemperatureController
 
+// TempProbeDetail is the persisted model for TemperatureProbe
+// this is to simplify loading data so that TemperatureProbe represents the physical state and this represents the cached state
+type TempProbeDetail struct {
+	gorm.Model
+	TemperatureControllerID uint
+	PhysAddr                string
+	FriendlyName            string
+	ReadingRaw              physic.Temperature `gorm:"-"`
+	Updated                 time.Time
+}
+
 // TemperatureController defines a mapping of temperature probes to their control settings
 type TemperatureController struct {
 	gorm.Model
-	Name              string
-	LastReadings      []physic.Temperature `gorm:"-"`
-	TemperatureProbes []*TemperatureProbe
-	CoolSettings      PidSettings `gorm:"polymorphic:TemperatureController;polymorphicValue:coolSettings"`
+	Name             string
+	LastReadings     []physic.Temperature `gorm:"-"`
+	TempProbeDetails []*TempProbeDetail
+	CoolSettings     PidSettings `gorm:"polymorphic:TemperatureController;polymorphicValue:coolSettings"`
 	// CoolSettingsID					uint
 	HeatSettings PidSettings `gorm:"polymorphic:TemperatureController;polymorphicValue:heatSettings"`
 	// HeatSettingsID					uint
@@ -73,7 +85,7 @@ type ManualSettings struct {
 // FindTemperatureControllerForProbe returns the pid controller associated with the TemperatureProbe
 func FindTemperatureControllerForProbe(physAddr string) *TemperatureController {
 	for _, controller := range controllers {
-		for _, probe := range controller.TemperatureProbes {
+		for _, probe := range controller.TempProbeDetails {
 			if probe.PhysAddr == physAddr {
 				return controller
 			}
@@ -94,12 +106,22 @@ func FindTemperatureControllerByName(name string) *TemperatureController {
 
 // FindTemperatureControllerByID - Find a temperature controller by id, preloading everything
 func FindTemperatureControllerByID(id string) *TemperatureController {
+	intID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		return nil
+	}
+
+	for i := range controllers {
+		if controllers[i].ID == uint(intID) {
+			return controllers[i]
+		}
+	}
 	var controller *TemperatureController
 	if database.FetchDatabase() == nil {
 		log.Printf("No Database configured, cannot lookup by Id")
 		return nil
 	}
-	result := database.FetchDatabase().Debug().Joins("ManualSettings").Joins("HysteriaSettings").First(&controller, id)
+	result := database.FetchDatabase().Debug().Joins("ManualSettings").Joins("HysteriaSettings").Joins("TempProbeDetails").First(&controller, id)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return nil
 	}
@@ -112,6 +134,29 @@ func FindTemperatureControllerByID(id string) *TemperatureController {
 	return controller
 }
 
+// DeleteTemperatureControllerByID - Delete a temperature controller with the ID specified and return the probes that are now freed
+func DeleteTemperatureControllerByID(id string) []*string {
+	var controller *TemperatureController
+	if database.FetchDatabase() == nil {
+		log.Printf("No Database configured, cannot lookup by Id")
+		return nil
+	}
+	controller = FindTemperatureControllerByID(id)
+	if controller == nil {
+		fmt.Printf("Could not find the recordx for %v", id)
+		return nil
+	}
+
+	probeList := []*string{}
+	for _, t := range controller.TempProbeDetails {
+		probeList = append(probeList, &t.PhysAddr)
+	}
+
+	database.FetchDatabase().Delete(&controller, id)
+
+	return probeList
+}
+
 // ClearControllers reset the map of controllers
 func ClearControllers() {
 	controllers = nil
@@ -122,7 +167,7 @@ func ClearControllers() {
 // probe -> The probe to associate with the controller
 // If a PID controller exists with the same name, the probe will be added to it (or no-op if it is already assigned)
 // If the passed in TemperatureProbe is associated with a different PID Controller, an error will be returned and no PID controller will be returned
-func CreateTemperatureController(name string, probe *TemperatureProbe) (*TemperatureController, error) {
+func CreateTemperatureController(name string, probe *TempProbeDetail) (*TemperatureController, error) {
 	existingControllerForProbe := FindTemperatureControllerForProbe(probe.PhysAddr)
 	controller := FindTemperatureControllerByName(name)
 
@@ -137,19 +182,21 @@ func CreateTemperatureController(name string, probe *TemperatureProbe) (*Tempera
 		controller = &TemperatureController{Name: name, TotalDiff: 0, integralError: 0, derivativeFactor: 0, prevDiff: 0}
 		database.Create(&controller)
 		controllers = append(controllers, controller)
+	} else {
+		fmt.Printf("Found controller for %v", controller.ID)
 	}
 
-	controller.TemperatureProbes = append(controller.TemperatureProbes, probe)
+	controller.TempProbeDetails = append(controller.TempProbeDetails, probe)
 	database.Save(&controller)
 	return controller, nil
 }
 
 // RemoveProbe removes a temperature probe from this controller
 func (c *TemperatureController) RemoveProbe(physAddr string) error {
-	for i, probe := range c.TemperatureProbes {
+	for i, probe := range c.TempProbeDetails {
 		if probe.PhysAddr == physAddr {
-			c.TemperatureProbes[i] = c.TemperatureProbes[len(c.TemperatureProbes)-1]
-			c.TemperatureProbes = c.TemperatureProbes[:len(c.TemperatureProbes)-1]
+			c.TempProbeDetails[i] = c.TempProbeDetails[len(c.TempProbeDetails)-1]
+			c.TempProbeDetails = c.TempProbeDetails[:len(c.TempProbeDetails)-1]
 			return nil
 		}
 	}
@@ -177,12 +224,12 @@ func (c *TemperatureController) UpdateOutput() {
 // AverageTemperature Calculate the average temperature for a temperature controller over all the probes
 func (c *TemperatureController) AverageTemperature() physic.Temperature {
 	var totalTemp int64
-	for _, probe := range c.TemperatureProbes {
+	for _, probe := range c.TempProbeDetails {
 		log.Printf("%v: %v", totalTemp, probe.ReadingRaw.Celsius())
 		totalTemp += (int64)(probe.ReadingRaw)
 	}
 
-	return (physic.Temperature)(totalTemp / (int64)(len(c.TemperatureProbes)))
+	return (physic.Temperature)(totalTemp / (int64)(len(c.TempProbeDetails)))
 }
 
 // Calculate does the calculation for the probe
@@ -340,4 +387,22 @@ func (h *HysteriaSettings) ApplySettings(newSettings *model.HysteriaSettingsInpu
 		h.MinTime = int64(*newSettings.MinTime)
 	}
 	return nil
+}
+
+// UpdateTemperature Set the temperature on the Temperature Probe from a string
+func (t *TempProbeDetail) UpdateTemperature(newTemp string) error {
+	return t.ReadingRaw.Set(newTemp)
+}
+
+// Reading The current temperature reading for the probe
+func (t *TempProbeDetail) Reading() string {
+	return t.ReadingRaw.String()
+}
+
+// UpdateReading -  Update the reading from the associated probe
+func (t *TempProbeDetail) UpdateReading() {
+	err := t.ReadingRaw.Set(GetTemperature(t.PhysAddr).Reading())
+	if err != nil {
+		log.Printf("Failed to update %v temperature details: %v", t.PhysAddr, err)
+	}
 }
