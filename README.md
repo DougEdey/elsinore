@@ -13,6 +13,8 @@ Rules are
 3) Do whatever you want with the frontend, I'll provide a functional React based front end so you can easily run it wherever
 4) Everything goes through a Pull Request
 
+[Architecture](ARCHITECTURE.md)
+
 ## Layout
 
 I'll get an architecture document up soon (:TM:) but for now, some common terms
