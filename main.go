@@ -12,6 +12,7 @@ import (
 	"github.com/dougedey/elsinore/devices"
 	"github.com/dougedey/elsinore/graph"
 	"github.com/dougedey/elsinore/graph/generated"
+	"github.com/dougedey/elsinore/hardware"
 	"periph.io/x/periph/conn/onewire"
 
 	"net/http"
@@ -26,21 +27,21 @@ func main() {
 
 	if *testDeviceFlag {
 		realAddress := "ARealAddress"
-		devices.SetProbe(&devices.TemperatureProbe{
+		hardware.SetProbe(&hardware.TemperatureProbe{
 			PhysAddr: realAddress,
 			Address:  onewire.Address(12345),
 		})
 	}
 
 	database.InitDatabase(dbName,
-		&devices.TemperatureProbe{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
+		&devices.TempProbeDetail{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
 		&devices.ManualSettings{}, &devices.TemperatureController{},
 	)
 
 	fmt.Println("Loaded and looking for temperatures")
 	messages := make(chan string)
-	go devices.ReadTemperatures(messages)
-	go devices.LogTemperatures(messages)
+	go hardware.ReadTemperatures(messages)
+	go hardware.LogTemperatures(messages)
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
 

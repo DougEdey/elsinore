@@ -15,6 +15,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/introspection"
 	"github.com/dougedey/elsinore/devices"
 	"github.com/dougedey/elsinore/graph/model"
+	"github.com/dougedey/elsinore/hardware"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -138,9 +139,9 @@ type PidSettingsResolver interface {
 	ID(ctx context.Context, obj *devices.PidSettings) (string, error)
 }
 type QueryResolver interface {
-	Probe(ctx context.Context, address *string) (*devices.TemperatureProbe, error)
-	ProbeList(ctx context.Context) ([]*devices.TemperatureProbe, error)
-	FetchProbes(ctx context.Context, addresses []*string) ([]*devices.TemperatureProbe, error)
+	Probe(ctx context.Context, address *string) (*hardware.TemperatureProbe, error)
+	ProbeList(ctx context.Context) ([]*hardware.TemperatureProbe, error)
+	FetchProbes(ctx context.Context, addresses []*string) ([]*hardware.TemperatureProbe, error)
 }
 type TemperatureControllerResolver interface {
 	ID(ctx context.Context, obj *devices.TemperatureController) (string, error)
@@ -1757,7 +1758,7 @@ func (ec *executionContext) _Query_probe(ctx context.Context, field graphql.Coll
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*devices.TemperatureProbe)
+	res := resTmp.(*hardware.TemperatureProbe)
 	fc.Result = res
 	return ec.marshalOTemperatureProbe2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐTemperatureProbe(ctx, field.Selections, res)
 }
@@ -1789,7 +1790,7 @@ func (ec *executionContext) _Query_probeList(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*devices.TemperatureProbe)
+	res := resTmp.([]*hardware.TemperatureProbe)
 	fc.Result = res
 	return ec.marshalOTemperatureProbe2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐTemperatureProbe(ctx, field.Selections, res)
 }
@@ -1828,7 +1829,7 @@ func (ec *executionContext) _Query_fetchProbes(ctx context.Context, field graphq
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*devices.TemperatureProbe)
+	res := resTmp.([]*hardware.TemperatureProbe)
 	fc.Result = res
 	return ec.marshalOTemperatureProbe2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐTemperatureProbe(ctx, field.Selections, res)
 }
@@ -2454,7 +2455,7 @@ func (ec *executionContext) _TemperatureController_tempProbeDetails(ctx context.
 	return ec.marshalOTempProbeDetails2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐTempProbeDetails(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TemperatureProbe_physAddr(ctx context.Context, field graphql.CollectedField, obj *devices.TemperatureProbe) (ret graphql.Marshaler) {
+func (ec *executionContext) _TemperatureProbe_physAddr(ctx context.Context, field graphql.CollectedField, obj *hardware.TemperatureProbe) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2486,7 +2487,7 @@ func (ec *executionContext) _TemperatureProbe_physAddr(ctx context.Context, fiel
 	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TemperatureProbe_reading(ctx context.Context, field graphql.CollectedField, obj *devices.TemperatureProbe) (ret graphql.Marshaler) {
+func (ec *executionContext) _TemperatureProbe_reading(ctx context.Context, field graphql.CollectedField, obj *hardware.TemperatureProbe) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2518,7 +2519,7 @@ func (ec *executionContext) _TemperatureProbe_reading(ctx context.Context, field
 	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TemperatureProbe_updated(ctx context.Context, field graphql.CollectedField, obj *devices.TemperatureProbe) (ret graphql.Marshaler) {
+func (ec *executionContext) _TemperatureProbe_updated(ctx context.Context, field graphql.CollectedField, obj *hardware.TemperatureProbe) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4209,7 +4210,7 @@ func (ec *executionContext) _TemperatureController(ctx context.Context, sel ast.
 
 var temperatureProbeImplementors = []string{"TemperatureProbe"}
 
-func (ec *executionContext) _TemperatureProbe(ctx context.Context, sel ast.SelectionSet, obj *devices.TemperatureProbe) graphql.Marshaler {
+func (ec *executionContext) _TemperatureProbe(ctx context.Context, sel ast.SelectionSet, obj *hardware.TemperatureProbe) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, temperatureProbeImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -5014,7 +5015,7 @@ func (ec *executionContext) marshalOTemperatureController2ᚖgithubᚗcomᚋdoug
 	return ec._TemperatureController(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOTemperatureProbe2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐTemperatureProbe(ctx context.Context, sel ast.SelectionSet, v []*devices.TemperatureProbe) graphql.Marshaler {
+func (ec *executionContext) marshalOTemperatureProbe2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐTemperatureProbe(ctx context.Context, sel ast.SelectionSet, v []*hardware.TemperatureProbe) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -5054,7 +5055,7 @@ func (ec *executionContext) marshalOTemperatureProbe2ᚕᚖgithubᚗcomᚋdouged
 	return ret
 }
 
-func (ec *executionContext) marshalOTemperatureProbe2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐTemperatureProbe(ctx context.Context, sel ast.SelectionSet, v *devices.TemperatureProbe) graphql.Marshaler {
+func (ec *executionContext) marshalOTemperatureProbe2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐTemperatureProbe(ctx context.Context, sel ast.SelectionSet, v *hardware.TemperatureProbe) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
