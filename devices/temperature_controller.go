@@ -9,6 +9,7 @@ import (
 
 	"github.com/dougedey/elsinore/database"
 	"github.com/dougedey/elsinore/graph/model"
+	"github.com/dougedey/elsinore/hardware"
 	"gorm.io/gorm"
 	"periph.io/x/periph/conn/physic"
 )
@@ -401,7 +402,7 @@ func (t *TempProbeDetail) Reading() string {
 
 // UpdateReading -  Update the reading from the associated probe
 func (t *TempProbeDetail) UpdateReading() {
-	err := t.ReadingRaw.Set(GetTemperature(t.PhysAddr).Reading())
+	err := t.ReadingRaw.Set(hardware.GetTemperature(t.PhysAddr).Reading())
 	if err != nil {
 		log.Printf("Failed to update %v temperature details: %v", t.PhysAddr, err)
 	}

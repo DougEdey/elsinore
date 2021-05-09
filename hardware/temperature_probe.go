@@ -1,4 +1,4 @@
-package devices
+package hardware
 
 import (
 	"encoding/binary"

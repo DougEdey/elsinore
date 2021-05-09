@@ -11,6 +11,7 @@ import (
 	"github.com/dougedey/elsinore/devices"
 	"github.com/dougedey/elsinore/graph/generated"
 	"github.com/dougedey/elsinore/graph/model"
+	"github.com/dougedey/elsinore/hardware"
 )
 
 func (r *hysteriaSettingsResolver) ID(ctx context.Context, obj *devices.HysteriaSettings) (string, error) {
@@ -22,7 +23,7 @@ func (r *manualSettingsResolver) ID(ctx context.Context, obj *devices.ManualSett
 }
 
 func (r *mutationResolver) AssignProbe(ctx context.Context, name string, address string) (*devices.TemperatureController, error) {
-	probe := devices.GetTemperature(address)
+	probe := hardware.GetTemperature(address)
 	if probe != nil {
 		probeDetails := devices.TempProbeDetail{FriendlyName: probe.PhysAddr, PhysAddr: probe.PhysAddr}
 		probeDetails.UpdateReading()
@@ -63,23 +64,23 @@ func (r *pidSettingsResolver) ID(ctx context.Context, obj *devices.PidSettings) 
 	return fmt.Sprint(obj.ID), nil
 }
 
-func (r *queryResolver) Probe(ctx context.Context, address *string) (*devices.TemperatureProbe, error) {
-	device := devices.GetTemperature(*address)
+func (r *queryResolver) Probe(ctx context.Context, address *string) (*hardware.TemperatureProbe, error) {
+	device := hardware.GetTemperature(*address)
 	if device != nil {
 		return device, nil
 	}
 	return nil, fmt.Errorf("no device found for address %v", *address)
 }
 
-func (r *queryResolver) ProbeList(ctx context.Context) ([]*devices.TemperatureProbe, error) {
-	return devices.GetProbes(), nil
+func (r *queryResolver) ProbeList(ctx context.Context) ([]*hardware.TemperatureProbe, error) {
+	return hardware.GetProbes(), nil
 }
 
-func (r *queryResolver) FetchProbes(ctx context.Context, addresses []*string) ([]*devices.TemperatureProbe, error) {
-	deviceList := []*devices.TemperatureProbe{}
+func (r *queryResolver) FetchProbes(ctx context.Context, addresses []*string) ([]*hardware.TemperatureProbe, error) {
+	deviceList := []*hardware.TemperatureProbe{}
 	missingAddresses := []string{}
 	for _, address := range addresses {
-		device := devices.GetTemperature(*address)
+		device := hardware.GetTemperature(*address)
 		if device != nil {
 			deviceList = append(deviceList, device)
 		} else {

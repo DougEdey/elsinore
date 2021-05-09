@@ -12,6 +12,7 @@ import (
 	"github.com/dougedey/elsinore/graph"
 	"github.com/dougedey/elsinore/graph/generated"
 	"github.com/dougedey/elsinore/graph/model"
+	"github.com/dougedey/elsinore/hardware"
 	"github.com/stretchr/testify/require"
 	"periph.io/x/periph/conn/onewire"
 )
@@ -37,7 +38,7 @@ func setupTestDb(t *testing.T) {
 func TestQuery(t *testing.T) {
 	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}})))
 	realAddress := "ARealAddress"
-	devices.SetProbe(&devices.TemperatureProbe{
+	hardware.SetProbe(&hardware.TemperatureProbe{
 		PhysAddr: realAddress,
 		Address:  onewire.Address(12345),
 	})
@@ -147,12 +148,12 @@ func TestAssignProbeMutations(t *testing.T) {
 	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}})))
 
 	realAddress := "ARealAddress"
-	devices.SetProbe(&devices.TemperatureProbe{
+	hardware.SetProbe(&hardware.TemperatureProbe{
 		PhysAddr: realAddress,
 		Address:  onewire.Address(12345),
 	})
 	aRealAddress := "RealAddress"
-	devices.SetProbe(&devices.TemperatureProbe{
+	hardware.SetProbe(&hardware.TemperatureProbe{
 		PhysAddr: aRealAddress,
 		Address:  onewire.Address(123456),
 	})
