@@ -9,14 +9,13 @@ import (
 
 	"github.com/dougedey/elsinore/database"
 	"github.com/dougedey/elsinore/devices"
-	"periph.io/x/periph/conn/onewire"
 	"periph.io/x/periph/conn/physic"
 )
 
 func setupTestDb(t *testing.T) {
 	dbName := "test"
 	database.InitDatabase(&dbName,
-		&devices.TemperatureProbe{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
+		&devices.TempProbeDetail{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
 		&devices.ManualSettings{}, &devices.TemperatureController{},
 	)
 
@@ -31,9 +30,8 @@ func setupTestDb(t *testing.T) {
 
 func TestCreateTemperatureController(t *testing.T) {
 	devices.ClearControllers()
-	probe := devices.TemperatureProbe{
+	probe := devices.TempProbeDetail{
 		PhysAddr: "ARealAddress",
-		Address:  onewire.Address(12345),
 	}
 
 	t.Run("A new Temperature controller is created if no existing device with the same name exists", func(t *testing.T) {
@@ -100,9 +98,8 @@ func TestCreateTemperatureController(t *testing.T) {
 func TestPersistenceTemperatureController(t *testing.T) {
 	setupTestDb(t)
 	devices.ClearControllers()
-	probe := devices.TemperatureProbe{
+	probe := devices.TempProbeDetail{
 		PhysAddr: "ARealAddress",
-		Address:  onewire.Address(12345),
 	}
 
 	t.Run("A new Temperature controller is persisted to the DB when configured", func(t *testing.T) {
@@ -126,9 +123,8 @@ func TestPersistenceTemperatureController(t *testing.T) {
 
 func TestTemperatureControllerAverageTemperature(t *testing.T) {
 	devices.ClearControllers()
-	probe := devices.TemperatureProbe{
+	probe := devices.TempProbeDetail{
 		PhysAddr:   "ARealAddress",
-		Address:    onewire.Address(12345),
 		ReadingRaw: physic.Temperature(0),
 	}
 	temperatureController, err := devices.CreateTemperatureController("sample", &probe)
@@ -149,9 +145,8 @@ func TestTemperatureControllerAverageTemperature(t *testing.T) {
 	})
 
 	t.Run("With multiple probes, you get an average value", func(t *testing.T) {
-		probe_two := devices.TemperatureProbe{
+		probe_two := devices.TempProbeDetail{
 			PhysAddr:   "AnotherRealAddress",
-			Address:    onewire.Address(123456),
 			ReadingRaw: physic.Temperature(0),
 		}
 		_, err = devices.CreateTemperatureController("sample", &probe_two)
@@ -176,9 +171,8 @@ func TestTemperatureControllerAverageTemperature(t *testing.T) {
 func TestTemperatureControllerUpdateOutput(t *testing.T) {
 	devices.ClearControllers()
 
-	probe := devices.TemperatureProbe{
+	probe := devices.TempProbeDetail{
 		PhysAddr:   "ARealAddress",
-		Address:    onewire.Address(12345),
 		ReadingRaw: physic.Temperature(0),
 	}
 	err := probe.UpdateTemperature("35C")
@@ -224,9 +218,8 @@ func TestTemperatureControllerCalculate(t *testing.T) {
 
 	stubNow := func() time.Time { return time.Unix(1615715366, 0) }
 
-	probe := devices.TemperatureProbe{
+	probe := devices.TempProbeDetail{
 		PhysAddr:   "ARealAddress",
-		Address:    onewire.Address(12345),
 		ReadingRaw: physic.Temperature(0),
 	}
 	err := probe.UpdateTemperature("35C")

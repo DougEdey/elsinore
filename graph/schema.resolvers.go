@@ -24,12 +24,14 @@ func (r *manualSettingsResolver) ID(ctx context.Context, obj *devices.ManualSett
 func (r *mutationResolver) AssignProbe(ctx context.Context, name string, address string) (*devices.TemperatureController, error) {
 	probe := devices.GetTemperature(address)
 	if probe != nil {
-		return devices.CreateTemperatureController(name, probe)
+		probeDetails := devices.TempProbeDetail{FriendlyName: probe.PhysAddr, PhysAddr: probe.PhysAddr}
+		probeDetails.UpdateReading()
+		return devices.CreateTemperatureController(name, &probeDetails)
 	}
 	return nil, fmt.Errorf("could not find a probe for %v", address)
 }
 
-func (r *mutationResolver) RemoveProbeFromController(ctx context.Context, address string) (*devices.TemperatureController, error) {
+func (r *mutationResolver) RemoveProbeFromTemperatureController(ctx context.Context, address string) (*devices.TemperatureController, error) {
 	controller := devices.FindTemperatureControllerForProbe(address)
 	if controller == nil {
 		return nil, fmt.Errorf("no controller could be found for %v", address)
@@ -38,7 +40,7 @@ func (r *mutationResolver) RemoveProbeFromController(ctx context.Context, addres
 	return controller, error
 }
 
-func (r *mutationResolver) UpdateProbe(ctx context.Context, id string, controllerSettings model.ControllerSettingsInput) (*devices.TemperatureController, error) {
+func (r *mutationResolver) UpdateTemperatureController(ctx context.Context, id string, controllerSettings model.TemperatureControllerSettingsInput) (*devices.TemperatureController, error) {
 	controller := devices.FindTemperatureControllerByID(id)
 	if controller == nil {
 		return nil, fmt.Errorf("no controller could be found for: %v", id)
@@ -46,6 +48,15 @@ func (r *mutationResolver) UpdateProbe(ctx context.Context, id string, controlle
 
 	err := controller.ApplySettings(controllerSettings)
 	return controller, err
+}
+
+func (r *mutationResolver) DeleteTemperatureController(ctx context.Context, id string) (*model.DeleteTemperatureControllerReturnType, error) {
+	probeList := devices.DeleteTemperatureControllerByID(id)
+	if probeList == nil {
+		return nil, fmt.Errorf("failed to find a controller to delete for: %v", id)
+	}
+	controllerReturn := model.DeleteTemperatureControllerReturnType{ID: id, TemperatureProbes: probeList}
+	return &controllerReturn, nil
 }
 
 func (r *pidSettingsResolver) ID(ctx context.Context, obj *devices.PidSettings) (string, error) {
@@ -88,8 +99,8 @@ func (r *temperatureControllerResolver) ID(ctx context.Context, obj *devices.Tem
 	return strconv.FormatUint(uint64(obj.ID), 10), nil
 }
 
-func (r *temperatureProbeResolver) ID(ctx context.Context, obj *devices.TemperatureProbe) (string, error) {
-	return fmt.Sprint(obj.ID), nil
+func (r *temperatureControllerResolver) TempProbeDetails(ctx context.Context, obj *devices.TemperatureController) ([]*model.TempProbeDetails, error) {
+	panic(fmt.Errorf("not implemented"))
 }
 
 // HysteriaSettings returns generated.HysteriaSettingsResolver implementation.
@@ -116,15 +127,9 @@ func (r *Resolver) TemperatureController() generated.TemperatureControllerResolv
 	return &temperatureControllerResolver{r}
 }
 
-// TemperatureProbe returns generated.TemperatureProbeResolver implementation.
-func (r *Resolver) TemperatureProbe() generated.TemperatureProbeResolver {
-	return &temperatureProbeResolver{r}
-}
-
 type hysteriaSettingsResolver struct{ *Resolver }
 type manualSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type pidSettingsResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type temperatureControllerResolver struct{ *Resolver }
-type temperatureProbeResolver struct{ *Resolver }
