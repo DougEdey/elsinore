@@ -18,7 +18,7 @@ Rules are
 I'll get an architecture document up soon (:TM:) but for now, some common terms
 
 * Devices -> Hardware devices, General Purpose Input Output (GPIO), temperature probes (DS18[B/S]20) to begin with, more to come
-* PID -> [Proportional Integral Differential](https://www.west-cs.com/products/l2/pid-temperature-controller/#:~:text=PID%20temperature%20controllers%20work%20using,possible%20by%20eliminating%20the%20impact)
+* PID -> [Proportional Integral Derivative](https://www.west-cs.com/products/l2/pid-temperature-controller/#:~:text=PID%20temperature%20controllers%20work%20using,possible%20by%20eliminating%20the%20impact)
 
 Elsinore is designed first and foremost as a Brewery controller, in order to do that, it must be able to maintain temperatures in your brewing vessels (this will vary on your setup), so the core part of work is to have a regular poll that will update the current temperature from a probe and determine whether to turn on or off the output associated with that temperature probe.
 
@@ -42,9 +42,10 @@ Options are
 
 * `-port` -> Change the port to listen on
 * `-graphiql` -> Turn off the GraphiQL interface (this may be turned off by default in the future)
+* `-db_name` -> The path/name of the local database, this will default to your starting directory and `elsinore.db`
+* `-test_device` -> A boolean flag to add a test Temperature probe, the physical address is `ARealAddress`
 
 Note: Boolean options (true/false) must be set as `-graphiql=true`, this is due to shell restrictions. They can be `1, 0, t, f, T, F, true, false, TRUE, FALSE, True, False`
-
 
 ## Releasing
 
