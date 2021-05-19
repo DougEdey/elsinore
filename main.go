@@ -43,6 +43,11 @@ func main() {
 	go hardware.ReadTemperatures(messages)
 	go hardware.LogTemperatures(messages)
 
+	// fmt.Println("Starting")
+	// out21 := devices.OutPin{Identifier: "GPIO21", FriendlyName: "GPIO21"}
+	// o := devices.OutputControl{HeatOutput: &out21, DutyCycle: 50, CycleTime: 4}
+	// go o.RunControl()
+
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
 
 	if *graphiqlFlag {
@@ -65,4 +70,5 @@ func main() {
 			fmt.Printf("GraphiQL interface: http://%v%v/graphiql \n", name, fullPort)
 		}
 	}
+
 }
