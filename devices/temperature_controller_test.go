@@ -197,12 +197,12 @@ func TestTemperatureControllerUpdateOutput(t *testing.T) {
 	t.Run("The 6th temperature removes the oldest temperature", func(t *testing.T) {
 		toDelete := temperatureController.LastReadings[0]
 
-		if 5 != len(temperatureController.LastReadings) {
+		if len(temperatureController.LastReadings) != 5 {
 			t.Fatalf("Expected %v temperature reading but got %v", 5, len(temperatureController.LastReadings))
 		}
 
 		temperatureController.UpdateOutput()
-		if 5 != len(temperatureController.LastReadings) {
+		if len(temperatureController.LastReadings) != 5 {
 			t.Fatalf("Expected %v temperature reading but got %v", 5, len(temperatureController.LastReadings))
 		}
 
