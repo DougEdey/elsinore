@@ -34,7 +34,11 @@ This can be built for any platform you want, CI runs against Windows, Mac, and L
 
 Currently, the scripts in this repo target Linux as the build host, since that's what I use as my primary development platform (I don't have a Windows machine, I'm open to pull requests)
 
-`bin/build_all` -> This will build Elsinores backend/server side for Linux and RaspberryPi targets, placing the binaries in the `builds/<platform>` directories as appropriate.
+This application is designed to use [xgo2](https://github.com/youchainhq/xgo2) (for local builds) but you can use [xgo]((https://github.com/karalabe/xgo/)) with this application if you don't want to download.
+
+The reason for this is that libsqlite does not like using cross compiled go `CGO_ENABLED=1` on target systems.
+
+`bin/build_all` -> This will build Elsinores backend/server side for Linux and RaspberryPi targets, placing the binaries in the `builds/` directory as appropriate.
 
 ## Running
 

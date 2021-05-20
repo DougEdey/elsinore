@@ -1,2 +1,1 @@
-env GOOS=linux GOARCH=arm GOARM=5 go build -o builds/raspberrypi/elsinore
-go build -o builds/linux/elsinore
+xgo2 --targets=linux/arm-6 -out builds/elsinore ./
