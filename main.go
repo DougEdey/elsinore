@@ -14,6 +14,7 @@ import (
 	"github.com/dougedey/elsinore/graph/generated"
 	"github.com/dougedey/elsinore/hardware"
 	"periph.io/x/periph/conn/onewire"
+	"periph.io/x/periph/host"
 
 	"net/http"
 )
@@ -38,15 +39,21 @@ func main() {
 		&devices.ManualSettings{}, &devices.TemperatureController{},
 	)
 
+	_, err := host.Init()
+	if err != nil {
+		log.Fatalf("failed to initialize periph: %v", err)
+	}
+
 	fmt.Println("Loaded and looking for temperatures")
 	messages := make(chan string)
 	go hardware.ReadTemperatures(messages)
 	go hardware.LogTemperatures(messages)
 
-	// fmt.Println("Starting")
-	// out21 := devices.OutPin{Identifier: "GPIO21", FriendlyName: "GPIO21"}
-	// o := devices.OutputControl{HeatOutput: &out21, DutyCycle: 50, CycleTime: 4}
-	// go o.RunControl()
+	fmt.Println("Starting")
+	out21 := devices.OutPin{Identifier: "GPIO21", FriendlyName: "GPIO21"}
+	out20 := devices.OutPin{Identifier: "GPIO20", FriendlyName: "GPIO20"}
+	o := devices.OutputControl{HeatOutput: &out20, CoolOutput: &out21, DutyCycle: -50, CycleTime: 4}
+	go o.RunControl()
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
 
