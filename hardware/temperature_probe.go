@@ -12,7 +12,6 @@ import (
 	"periph.io/x/periph/conn/physic"
 	"periph.io/x/periph/devices/ds18b20"
 	"periph.io/x/periph/experimental/host/netlink"
-	"periph.io/x/periph/host"
 )
 
 var probes = make(map[string]*TemperatureProbe)
@@ -83,13 +82,9 @@ func ReadAddresses(oneBus *netlink.OneWire, messages chan string) {
 }
 
 // ReadTemperatures Read the temperatures on an infinite ticker loop
-func ReadTemperatures(m chan string) {
+func ReadTemperatures(m chan string, quit chan struct{}) {
 	defer close(m)
 	fmt.Println("Reading temps.")
-	_, err := host.Init()
-	if err != nil {
-		log.Fatalf("failed to initialize periph: %v", err)
-	}
 
 	oneBus, err := netlink.New(001)
 	if err != nil {
@@ -119,7 +114,6 @@ func ReadTemperatures(m chan string) {
 		}
 	}
 	ticker := time.NewTicker(5 * time.Second)
-	quit := make(chan struct{})
 
 	for {
 		select {

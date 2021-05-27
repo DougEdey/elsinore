@@ -42,6 +42,7 @@ func Close() {
 		log.Panicf("NO DB to close! %v", err)
 	}
 	sqlDB.Close()
+	datastore = nil
 }
 
 // Create a new instance of the supplied interface, this is a helper wrapper around the database so you don't need to check FetchDatabase
@@ -49,7 +50,7 @@ func Create(dst interface{}) {
 	if datastore != nil {
 		datastore.Create(dst)
 	} else {
-		log.Printf("No database configured, not creeating %v", dst)
+		log.Printf("No database configured, not creating %v", dst)
 	}
 }
 

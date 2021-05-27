@@ -154,8 +154,6 @@ func TestTemperatureControllerAverageTemperature(t *testing.T) {
 			log.Fatalf("Failed to create %v", err)
 		}
 
-		// probe.Reading = new(physic.Temperature)
-		// probe.Reading.Set("35C")
 		err = probe_two.UpdateTemperature("37C")
 		if err != nil {
 			log.Fatalf("Failed to update %v", err)

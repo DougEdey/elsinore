@@ -14,6 +14,7 @@ import (
 	"github.com/dougedey/elsinore/graph/generated"
 	"github.com/dougedey/elsinore/hardware"
 	"periph.io/x/periph/conn/onewire"
+	"periph.io/x/periph/host"
 
 	"net/http"
 )
@@ -24,6 +25,8 @@ func main() {
 	dbName := flag.String("db_name", "elsinore", "The path/name of the local database")
 	testDeviceFlag := flag.Bool("test_device", false, "Create a test device")
 	flag.Parse()
+
+	quit := make(chan struct{})
 
 	if *testDeviceFlag {
 		realAddress := "ARealAddress"
@@ -38,15 +41,14 @@ func main() {
 		&devices.ManualSettings{}, &devices.TemperatureController{},
 	)
 
+	_, err := host.Init()
+	if err != nil {
+		log.Fatalf("failed to initialize periph: %v", err)
+	}
+
 	fmt.Println("Loaded and looking for temperatures")
 	messages := make(chan string)
-	go hardware.ReadTemperatures(messages)
-	go hardware.LogTemperatures(messages)
-
-	// fmt.Println("Starting")
-	// out21 := devices.OutPin{Identifier: "GPIO21", FriendlyName: "GPIO21"}
-	// o := devices.OutputControl{HeatOutput: &out21, DutyCycle: 50, CycleTime: 4}
-	// go o.RunControl()
+	go hardware.ReadTemperatures(messages, quit)
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
 

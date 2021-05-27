@@ -11,6 +11,7 @@ import (
 	"github.com/dougedey/elsinore/graph/model"
 	"github.com/dougedey/elsinore/hardware"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"periph.io/x/periph/conn/physic"
 )
 
@@ -44,11 +45,12 @@ type TemperatureController struct {
 	DutyCycle               int64
 	CalculatedDuty          int64
 	SetPointRaw             physic.Temperature
-	PreviousCalculationTime time.Time `gorm:"-"`
-	TotalDiff               float64   `gorm:"-"` // Always in Fahrenheit (internal calculation)
-	integralError           float64   `gorm:"-"`
-	derivativeFactor        float64   `gorm:"-"`
-	prevDiff                float64   `gorm:"-"` // Always in Fahrenheit (internal calculaiton)
+	PreviousCalculationTime time.Time      `gorm:"-"`
+	TotalDiff               float64        `gorm:"-"` // Always in Fahrenheit (internal calculation)
+	integralError           float64        `gorm:"-"`
+	derivativeFactor        float64        `gorm:"-"`
+	prevDiff                float64        `gorm:"-"` // Always in Fahrenheit (internal calculaiton)
+	OutputControl           *OutputControl `gorm:"-"`
 }
 
 // PidSettings define the actual values for heating/cooling as persisted
@@ -62,6 +64,7 @@ type PidSettings struct {
 	Configured                bool
 	TemperatureControllerID   uint
 	TemperatureControllerType string
+	Gpio                      string
 }
 
 // HysteriaSettings are used for Hysteria mode
@@ -102,7 +105,31 @@ func FindTemperatureControllerByName(name string) *TemperatureController {
 			return controllers[i]
 		}
 	}
-	return nil
+
+	if database.FetchDatabase() == nil {
+		log.Printf("No Database configured, cannot lookup by Name")
+		return nil
+	}
+
+	var controller *TemperatureController = nil
+	result := database.FetchDatabase().Debug().Preload(clause.Associations).First(&controller, "name = ?", name)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil
+	}
+
+	database.FetchDatabase().Debug().
+		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "coolSettings", controller.ID).
+		First(&controller.CoolSettings)
+	database.FetchDatabase().Debug().
+		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "heatSettings", controller.ID).
+		First(&controller.HeatSettings)
+	controllers = append(controllers, controller)
+	return controller
+}
+
+// AllTemperatureControllers returns all the temperature controllers
+func AllTemperatureControllers() []*TemperatureController {
+	return controllers
 }
 
 // FindTemperatureControllerByID - Find a temperature controller by id, preloading everything
@@ -111,18 +138,20 @@ func FindTemperatureControllerByID(id string) *TemperatureController {
 	if err != nil {
 		return nil
 	}
+	fmt.Printf("Converting %v to an int %v, %v\n", id, intID, len((controllers)))
 
 	for i := range controllers {
+		fmt.Printf("Comparing %v to %v\n", controllers[i].ID, uint(intID))
 		if controllers[i].ID == uint(intID) {
 			return controllers[i]
 		}
 	}
-	var controller *TemperatureController
+	var controller *TemperatureController = nil
 	if database.FetchDatabase() == nil {
 		log.Printf("No Database configured, cannot lookup by Id")
 		return nil
 	}
-	result := database.FetchDatabase().Debug().Joins("ManualSettings").Joins("HysteriaSettings").Joins("TempProbeDetails").First(&controller, id)
+	result := database.FetchDatabase().Debug().Preload(clause.Associations).First(&controller, id)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return nil
 	}
@@ -132,6 +161,7 @@ func FindTemperatureControllerByID(id string) *TemperatureController {
 	database.FetchDatabase().Debug().
 		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "heatSettings", controller.ID).
 		First(&controller.HeatSettings)
+	controllers = append(controllers, controller)
 	return controller
 }
 
@@ -315,6 +345,25 @@ func (c *TemperatureController) ApplySettings(newSettings model.TemperatureContr
 		c.Mode = *newSettings.Mode
 	}
 	database.Save(c)
+
+	if c.HeatSettings.Gpio != "" || c.CoolSettings.Gpio != "" {
+		if c.OutputControl == nil {
+			log.Println("Turning on output control")
+			heatingPin := OutPin{Identifier: c.HeatSettings.Gpio, FriendlyName: "Heating"}
+			coolingPin := OutPin{Identifier: c.CoolSettings.Gpio, FriendlyName: "Cooling"}
+			outputControl := OutputControl{HeatOutput: &heatingPin, CoolOutput: &coolingPin, DutyCycle: c.ManualSettings.DutyCycle, CycleTime: c.HeatSettings.CycleTime}
+			c.OutputControl = &outputControl
+			go c.OutputControl.RunControl()
+		} else {
+			log.Println("Updating output control")
+			c.OutputControl.DutyCycle = c.ManualSettings.DutyCycle
+			c.OutputControl.CycleTime = c.HeatSettings.CycleTime
+		}
+	} else {
+		log.Println("Turning off output control")
+		c.OutputControl.Reset()
+		c.OutputControl = nil
+	}
 	return nil
 }
 
@@ -343,6 +392,9 @@ func (s *PidSettings) ApplySettings(newSettings *model.PidSettingsInput) error {
 	}
 	if newSettings.Derivative != nil {
 		s.Derivative = *newSettings.Derivative
+	}
+	if newSettings.Gpio != nil {
+		s.Gpio = *newSettings.Gpio
 	}
 	return nil
 }
