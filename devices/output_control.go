@@ -12,7 +12,13 @@ import (
 	"periph.io/x/periph/conn/gpio/gpioreg"
 )
 
-var Context, CancelFunc = context.WithCancel(context.Background())
+var contextDecl, cancelFunc = context.WithCancel(context.Background())
+
+// Context - The global context object
+var Context = contextDecl
+
+// CancelFunc - Call this to shutdown the app
+var CancelFunc = cancelFunc
 
 // OutputControl is a basic struct to handle heating outputs with a duty cyclke
 type OutputControl struct {
@@ -34,13 +40,13 @@ type OutPin struct {
 	offTime      *time.Time
 }
 
-func (op *OutPin) off() {
+func (op *OutPin) off() bool {
 	if op == nil {
-		return
+		return false
 	}
 
 	if op.offTime != nil {
-		return
+		return false
 	}
 
 	if err := op.PinIO.Out(gpio.Low); err != nil {
@@ -49,22 +55,25 @@ func (op *OutPin) off() {
 	curTime := time.Now()
 	op.offTime = &curTime
 	op.onTime = nil
+	return true
 }
 
-func (op *OutPin) on() {
+func (op *OutPin) on() bool {
 	if op == nil {
-		return
+		return false
 	}
 
 	if op.onTime != nil {
-		return
+		return false
 	}
+
 	if err := op.PinIO.Out(gpio.High); err != nil {
 		log.Fatal(err)
 	}
 	curTime := time.Now()
 	op.offTime = nil
 	op.onTime = &curTime
+	return true
 }
 
 func (op *OutPin) reset() {
@@ -101,6 +110,16 @@ func (o *OutputControl) CalculateOutput() {
 
 	if o.DutyCycle == 0 {
 		o.HeatOutput.off()
+	} else if o.DutyCycle == 100 {
+		o.CoolOutput.off()
+		if o.HeatOutput.on() {
+			fmt.Println("Turning on Heat Output for 100% duty cycle")
+		}
+	} else if o.DutyCycle == -100 {
+		o.HeatOutput.off()
+		if o.CoolOutput.on() {
+			fmt.Println("Turning on Cool Output for -100% duty cycle")
+		}
 	} else if o.DutyCycle > 0 {
 		o.CoolOutput.off()
 
