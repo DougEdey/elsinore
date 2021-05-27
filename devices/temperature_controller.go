@@ -123,6 +123,7 @@ func FindTemperatureControllerByName(name string) *TemperatureController {
 	database.FetchDatabase().Debug().
 		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "heatSettings", controller.ID).
 		First(&controller.HeatSettings)
+	controllers = append(controllers, controller)
 	return controller
 }
 
@@ -137,7 +138,7 @@ func FindTemperatureControllerByID(id string) *TemperatureController {
 	if err != nil {
 		return nil
 	}
-	fmt.Printf("Converting %v to an int %v\n", id, intID)
+	fmt.Printf("Converting %v to an int %v, %v\n", id, intID, len((controllers)))
 
 	for i := range controllers {
 		fmt.Printf("Comparing %v to %v\n", controllers[i].ID, uint(intID))
@@ -160,6 +161,7 @@ func FindTemperatureControllerByID(id string) *TemperatureController {
 	database.FetchDatabase().Debug().
 		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "heatSettings", controller.ID).
 		First(&controller.HeatSettings)
+	controllers = append(controllers, controller)
 	return controller
 }
 
