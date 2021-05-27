@@ -1,6 +1,7 @@
 package devices
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math"
@@ -10,6 +11,8 @@ import (
 	"periph.io/x/periph/conn/gpio"
 	"periph.io/x/periph/conn/gpio/gpioreg"
 )
+
+var Context, CancelFunc = context.WithCancel(context.Background())
 
 // OutputControl is a basic struct to handle heating outputs with a duty cyclke
 type OutputControl struct {
@@ -104,7 +107,7 @@ func (o *OutputControl) CalculateOutput() {
 		if o.HeatOutput.onTime != nil {
 			// it's on, do we need to turn it off?
 			changeAt := time.Since(*o.HeatOutput.onTime)
-			if changeAt.Seconds() >= float64(cycleSeconds) {
+			if changeAt.Seconds() > float64(cycleSeconds) {
 				fmt.Printf("Heat output turning off after %v seconds\n", changeAt.Seconds())
 				o.HeatOutput.off()
 			}
@@ -122,7 +125,7 @@ func (o *OutputControl) CalculateOutput() {
 		if o.CoolOutput.onTime != nil {
 			// it's on, do we need to turn it off?
 			changeAt := time.Since(*o.CoolOutput.onTime)
-			if changeAt.Seconds() >= float64(cycleSeconds) {
+			if changeAt.Seconds() > float64(cycleSeconds) {
 				fmt.Printf("Cool output turning off after %v seconds\n", changeAt.Seconds())
 				o.CoolOutput.off()
 			}
@@ -146,6 +149,7 @@ func (o *OutputControl) RunControl() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	ticker := time.NewTicker(duration)
 	quit := make(chan struct{})
 
@@ -156,6 +160,9 @@ func (o *OutputControl) RunControl() {
 		case <-quit:
 			ticker.Stop()
 			fmt.Println("Stop")
+			return
+		case <-Context.Done():
+			o.Reset()
 			return
 		}
 	}

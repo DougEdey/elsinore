@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -13,6 +14,7 @@ import (
 	"github.com/dougedey/elsinore/graph"
 	"github.com/dougedey/elsinore/graph/generated"
 	"github.com/dougedey/elsinore/hardware"
+	"github.com/ztrue/shutdown"
 	"periph.io/x/periph/conn/onewire"
 	"periph.io/x/periph/host"
 
@@ -50,17 +52,35 @@ func main() {
 	messages := make(chan string)
 	go hardware.ReadTemperatures(messages, quit)
 
+	httpServerExitDone := &sync.WaitGroup{}
+
+	httpServerExitDone.Add(1)
+	srv := startHTTPServer(portPtr, graphiqlFlag, httpServerExitDone)
+
+	shutdown.Add(func() {
+		devices.CancelFunc()
+		shutdownErr := srv.Shutdown(devices.Context)
+		if shutdownErr != nil {
+			log.Println(shutdownErr)
+		}
+	})
+
+	shutdown.Listen()
+}
+func startHTTPServer(portPtr *string, graphiqlFlag *bool, wg *sync.WaitGroup) *http.Server {
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
+	httpSrv := &http.Server{Addr: ":" + *portPtr}
 
 	if *graphiqlFlag {
 		http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-		log.Printf("connect to http://localhost:%s/ for GraphQL playground", *portPtr)
 	}
 	http.Handle("/query", srv)
 
-	log.Fatal(http.ListenAndServe(":"+*portPtr, nil))
+	go func() {
+		defer wg.Done()
+		log.Fatal(httpSrv.ListenAndServe())
+	}()
 
-	fmt.Printf("Server on %v\n", *portPtr)
 	fullPort := fmt.Sprintf(":%v", *portPtr)
 
 	name, err := os.Hostname()
@@ -72,5 +92,5 @@ func main() {
 			fmt.Printf("GraphiQL interface: http://%v%v/graphiql \n", name, fullPort)
 		}
 	}
-
+	return httpSrv
 }
