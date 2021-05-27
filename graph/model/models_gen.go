@@ -42,6 +42,8 @@ type PidSettingsInput struct {
 	Integral *float64 `json:"integral"`
 	// The proportional calculation value
 	Proportional *float64 `json:"proportional"`
+	// The friendly name of the GPIO Value
+	Gpio *string `json:"gpio"`
 }
 
 // A device that reads a temperature and is assigned to a temperature controller
@@ -72,4 +74,14 @@ type TemperatureControllerSettingsInput struct {
 	HysteriaSettings *HysteriaSettingsInput `json:"hysteriaSettings"`
 	// The manual settings for this temperature controller
 	ManualSettings *ManualSettingsInput `json:"manualSettings"`
+}
+
+// A device that reads a temperature
+type TemperatureProbe struct {
+	// The physical address of this probe
+	PhysAddr *string `json:"physAddr"`
+	// The value of the reading
+	Reading *string `json:"reading"`
+	// The time that this reading was updated
+	Updated *time.Time `json:"updated"`
 }

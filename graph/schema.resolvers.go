@@ -64,25 +64,32 @@ func (r *pidSettingsResolver) ID(ctx context.Context, obj *devices.PidSettings) 
 	return fmt.Sprint(obj.ID), nil
 }
 
-func (r *queryResolver) Probe(ctx context.Context, address *string) (*hardware.TemperatureProbe, error) {
+func (r *queryResolver) Probe(ctx context.Context, address *string) (*model.TemperatureProbe, error) {
 	device := hardware.GetTemperature(*address)
 	if device != nil {
-		return device, nil
+		reading := device.Reading()
+		return &model.TemperatureProbe{PhysAddr: &device.PhysAddr, Reading: &reading, Updated: &device.Updated}, nil
 	}
 	return nil, fmt.Errorf("no device found for address %v", *address)
 }
 
-func (r *queryResolver) ProbeList(ctx context.Context) ([]*hardware.TemperatureProbe, error) {
-	return hardware.GetProbes(), nil
+func (r *queryResolver) ProbeList(ctx context.Context) ([]*model.TemperatureProbe, error) {
+	probeList := []*model.TemperatureProbe{}
+	for _, device := range hardware.GetProbes() {
+		reading := device.Reading()
+		probeList = append(probeList, &model.TemperatureProbe{PhysAddr: &device.PhysAddr, Reading: &reading, Updated: &device.Updated})
+	}
+	return probeList, nil
 }
 
-func (r *queryResolver) FetchProbes(ctx context.Context, addresses []*string) ([]*hardware.TemperatureProbe, error) {
-	deviceList := []*hardware.TemperatureProbe{}
+func (r *queryResolver) FetchProbes(ctx context.Context, addresses []*string) ([]*model.TemperatureProbe, error) {
+	deviceList := []*model.TemperatureProbe{}
 	missingAddresses := []string{}
 	for _, address := range addresses {
 		device := hardware.GetTemperature(*address)
 		if device != nil {
-			deviceList = append(deviceList, device)
+			reading := device.Reading()
+			deviceList = append(deviceList, &model.TemperatureProbe{PhysAddr: &device.PhysAddr, Reading: &reading, Updated: &device.Updated})
 		} else {
 			missingAddresses = append(missingAddresses, *address)
 		}
@@ -96,12 +103,29 @@ func (r *queryResolver) FetchProbes(ctx context.Context, addresses []*string) ([
 	return deviceList, missingError
 }
 
+func (r *queryResolver) TemperatureContollers(ctx context.Context, name *string) ([]*devices.TemperatureController, error) {
+	if name == nil {
+		return devices.AllTemperatureControllers(), nil
+	}
+	controller := devices.FindTemperatureControllerByName(*name)
+	if controller == nil {
+		return nil, fmt.Errorf("no controller could be found for %v", *name)
+	}
+	return []*devices.TemperatureController{controller}, nil
+}
+
 func (r *temperatureControllerResolver) ID(ctx context.Context, obj *devices.TemperatureController) (string, error) {
 	return strconv.FormatUint(uint64(obj.ID), 10), nil
 }
 
 func (r *temperatureControllerResolver) TempProbeDetails(ctx context.Context, obj *devices.TemperatureController) ([]*model.TempProbeDetails, error) {
-	panic(fmt.Errorf("not implemented"))
+	probeList := []*model.TempProbeDetails{}
+	for _, tempProbe := range obj.TempProbeDetails {
+		reading := tempProbe.Reading()
+		probeDetail := model.TempProbeDetails{ID: fmt.Sprint(tempProbe.ID), PhysAddr: &tempProbe.PhysAddr, Reading: &reading, Name: &tempProbe.FriendlyName, Updated: &tempProbe.Updated}
+		probeList = append(probeList, &probeDetail)
+	}
+	return probeList, nil
 }
 
 // HysteriaSettings returns generated.HysteriaSettingsResolver implementation.

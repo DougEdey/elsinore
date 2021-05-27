@@ -32,10 +32,13 @@ type OutPin struct {
 }
 
 func (op *OutPin) off() {
-	if op.offTime != nil {
-		log.Println("No off time")
+	if op == nil {
 		return
-	}	
+	}
+
+	if op.offTime != nil {
+		return
+	}
 
 	if err := op.PinIO.Out(gpio.Low); err != nil {
 		log.Fatal(err)
@@ -46,8 +49,11 @@ func (op *OutPin) off() {
 }
 
 func (op *OutPin) on() {
+	if op == nil {
+		return
+	}
+
 	if op.onTime != nil {
-		log.Println("No on time")
 		return
 	}
 	if err := op.PinIO.Out(gpio.High); err != nil {
@@ -59,64 +65,66 @@ func (op *OutPin) on() {
 }
 
 func (op *OutPin) reset() {
-	op.PinIO = gpioreg.ByName(op.Identifier)
-	if op.PinIO == nil {
-		log.Fatalf("No Pin for %v!\n", op.Identifier)
+	if op.Identifier == "" {
+		return
 	}
-	
+
+	if op.PinIO == nil {
+		op.PinIO = gpioreg.ByName(op.Identifier)
+		if op.PinIO == nil {
+			log.Fatalf("No Pin for %v!\n", op.Identifier)
+		}
+	}
+
 	op.off()
 }
 
-func (o *OutputControl) reset() {
-	o.HeatOutput.reset()
-	o.CoolOutput.reset()
+// Reset - Reset the output pins
+func (o *OutputControl) Reset() {
+	if o == nil {
+		return
+	}
+	if o.HeatOutput != nil {
+		o.HeatOutput.reset()
+	}
+	if o.CoolOutput != nil {
+		o.CoolOutput.reset()
+	}
 }
 
 // CalculateOutput - Turn on and off the output pin for this output control depending on the duty cycle
 func (o *OutputControl) CalculateOutput() {
-	cycleSeconds := math.Abs(float64(o.CycleTime * o.DutyCycle) / 100)
+	cycleSeconds := math.Abs(float64(o.CycleTime*o.DutyCycle) / 100)
 
 	if o.DutyCycle == 0 {
 		o.HeatOutput.off()
 	} else if o.DutyCycle > 0 {
-		o.CoolOutput.off();
+		o.CoolOutput.off()
 
-		fmt.Printf("Heat: off: %v, on: %v\n", o.HeatOutput.offTime, o.HeatOutput.onTime)
 		if o.HeatOutput.onTime != nil {
 			// it's on, do we need to turn it off?
 			changeAt := time.Since(*o.HeatOutput.onTime)
 			if changeAt.Seconds() >= float64(cycleSeconds) {
 				fmt.Printf("Heat output turning off after %v seconds\n", changeAt.Seconds())
 				o.HeatOutput.off()
-			} else {
-				remaining := changeAt.Seconds() - float64(cycleSeconds)
-				fmt.Printf("Heat output to turn off in %v seconds\n", remaining)
 			}
 		} else if o.HeatOutput.offTime != nil {
 			// it's off, do we need to turn it on?
 			changeAt := time.Since(*o.HeatOutput.offTime)
 			offSeconds := float64(o.CycleTime) - cycleSeconds
 			if changeAt.Seconds() >= offSeconds {
-				fmt.Printf("Heat output turning on after %v seconds\n", changeAt.Seconds())
 				o.HeatOutput.on()
-			} else {
-				remaining := changeAt.Seconds() - offSeconds
-				fmt.Printf("Heat output to turn on in %v seconds\n", remaining)
 			}
 		}
 	} else if o.DutyCycle < 0 {
-		o.HeatOutput.off();
-		
-		fmt.Printf("Cool: off: %v, on: %v\n", o.CoolOutput.offTime, o.CoolOutput.onTime)
+		o.HeatOutput.off()
+
 		if o.CoolOutput.onTime != nil {
 			// it's on, do we need to turn it off?
 			changeAt := time.Since(*o.CoolOutput.onTime)
 			if changeAt.Seconds() >= float64(cycleSeconds) {
 				fmt.Printf("Cool output turning off after %v seconds\n", changeAt.Seconds())
 				o.CoolOutput.off()
-			} else {
-				remaining := changeAt.Seconds() - float64(cycleSeconds)
-				fmt.Printf("Cool output to turn off in %v seconds\n", remaining)
 			}
 		} else if o.CoolOutput.offTime != nil {
 			// it's off, do we need to turn it on?
@@ -125,9 +133,6 @@ func (o *OutputControl) CalculateOutput() {
 			if changeAt.Seconds() >= offSeconds {
 				fmt.Printf("Cool output turning on after %v seconds\n", changeAt.Seconds())
 				o.CoolOutput.on()
-			} else {
-				remaining := changeAt.Seconds() - offSeconds
-				fmt.Printf("Cool output to turn on in %v seconds\n", remaining)
 			}
 		}
 	}
@@ -136,8 +141,8 @@ func (o *OutputControl) CalculateOutput() {
 // RunControl -> Run the output controller for a heating output
 func (o *OutputControl) RunControl() {
 	fmt.Println("Starting output control")
-	o.reset()
-	duration, err := time.ParseDuration("500ms")
+	o.Reset()
+	duration, err := time.ParseDuration("10ms")
 	if err != nil {
 		log.Fatal(err)
 	}

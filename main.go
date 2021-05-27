@@ -26,6 +26,8 @@ func main() {
 	testDeviceFlag := flag.Bool("test_device", false, "Create a test device")
 	flag.Parse()
 
+	quit := make(chan struct{})
+
 	if *testDeviceFlag {
 		realAddress := "ARealAddress"
 		hardware.SetProbe(&hardware.TemperatureProbe{
@@ -46,14 +48,7 @@ func main() {
 
 	fmt.Println("Loaded and looking for temperatures")
 	messages := make(chan string)
-	go hardware.ReadTemperatures(messages)
-	go hardware.LogTemperatures(messages)
-
-	fmt.Println("Starting")
-	out21 := devices.OutPin{Identifier: "GPIO21", FriendlyName: "GPIO21"}
-	out20 := devices.OutPin{Identifier: "GPIO20", FriendlyName: "GPIO20"}
-	o := devices.OutputControl{HeatOutput: &out20, CoolOutput: &out21, DutyCycle: -50, CycleTime: 4}
-	go o.RunControl()
+	go hardware.ReadTemperatures(messages, quit)
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
 
