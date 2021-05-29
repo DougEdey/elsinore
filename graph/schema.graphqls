@@ -101,6 +101,9 @@ input TemperatureControllerSettingsInput {
 
   """The manual settings for this temperature controller"""
   manualSettings: ManualSettingsInput
+
+  """The target for auto mode"""
+  setPoint: String
 }
 
 type Query {

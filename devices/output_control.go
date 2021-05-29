@@ -91,6 +91,15 @@ func (op *OutPin) reset() {
 	op.off()
 }
 
+func (op *OutPin) update(identifier string) {
+	if identifier == "" {
+		op.reset()
+	} else if op.Identifier != identifier {
+		op.Identifier = identifier
+		op.PinIO = nil
+	}
+}
+
 // Reset - Reset the output pins
 func (o *OutputControl) Reset() {
 	if o == nil {
@@ -101,6 +110,28 @@ func (o *OutputControl) Reset() {
 	}
 	if o.CoolOutput != nil {
 		o.CoolOutput.reset()
+	}
+}
+
+// UpdateGpios - Update the heating and cooling outputs to their new pins
+func (o *OutputControl) UpdateGpios(heatGpio string, coolGpio string) {
+	// update the heating pin
+	if o.HeatOutput == nil && heatGpio != "" {
+		o.HeatOutput = &OutPin{Identifier: heatGpio, FriendlyName: "Heating"}
+	} else if o.HeatOutput != nil {
+		o.HeatOutput.update(heatGpio)
+		if heatGpio == "" {
+			o.HeatOutput = nil
+		}
+	}
+	// update the cooling pin
+	if o.CoolOutput == nil && coolGpio != "" {
+		o.CoolOutput = &OutPin{Identifier: coolGpio, FriendlyName: "Cooling"}
+	} else if o.CoolOutput != nil {
+		o.CoolOutput.update(coolGpio)
+		if coolGpio == "" {
+			o.CoolOutput = nil
+		}
 	}
 }
 
@@ -161,7 +192,7 @@ func (o *OutputControl) CalculateOutput() {
 }
 
 // RunControl -> Run the output controller for a heating output
-func (o *OutputControl) RunControl() {
+func (o *OutputControl) RunControl(quit chan struct{}) {
 	fmt.Println("Starting output control")
 	o.Reset()
 	duration, err := time.ParseDuration("10ms")
@@ -170,18 +201,19 @@ func (o *OutputControl) RunControl() {
 	}
 
 	ticker := time.NewTicker(duration)
-	quit := make(chan struct{})
 
 	for {
 		select {
 		case <-ticker.C:
 			o.CalculateOutput()
 		case <-quit:
+			o.Reset()
 			ticker.Stop()
 			fmt.Println("Stop")
 			return
 		case <-Context.Done():
 			o.Reset()
+			fmt.Println("Done")
 			return
 		}
 	}

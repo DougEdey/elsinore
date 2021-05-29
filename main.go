@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -49,8 +50,9 @@ func main() {
 	}
 
 	fmt.Println("Loaded and looking for temperatures")
-	messages := make(chan string)
-	go hardware.ReadTemperatures(messages, quit)
+	// messages := make(chan string)
+	go hardware.ReadTemperatures(nil, quit)
+	go temperatureControllerRunner()
 
 	httpServerExitDone := &sync.WaitGroup{}
 
@@ -67,6 +69,7 @@ func main() {
 
 	shutdown.Listen()
 }
+
 func startHTTPServer(portPtr *string, graphiqlFlag *bool, wg *sync.WaitGroup) *http.Server {
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
 	httpSrv := &http.Server{Addr: ":" + *portPtr}
@@ -93,4 +96,29 @@ func startHTTPServer(portPtr *string, graphiqlFlag *bool, wg *sync.WaitGroup) *h
 		}
 	}
 	return httpSrv
+}
+
+func temperatureControllerRunner() {
+	fmt.Println("Monitoring for temperature controller changes...")
+	duration, err := time.ParseDuration("1000ms")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ticker := time.NewTicker(duration)
+
+	for {
+		select {
+		case <-ticker.C:
+			for _, controller := range devices.AllTemperatureControllers() {
+				if !controller.Running {
+					fmt.Printf("Starting %v!\n", controller.Name)
+					go controller.RunControl()
+				}
+			}
+		case <-devices.Context.Done():
+			ticker.Stop()
+			return
+		}
+	}
 }

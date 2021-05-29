@@ -51,6 +51,8 @@ type TemperatureController struct {
 	derivativeFactor        float64        `gorm:"-"`
 	prevDiff                float64        `gorm:"-"` // Always in Fahrenheit (internal calculaiton)
 	OutputControl           *OutputControl `gorm:"-"`
+	Running                 bool           `gorm:"-"`
+	quitOutputControl       chan struct{}  `gorm:"-"`
 }
 
 // PidSettings define the actual values for heating/cooling as persisted
@@ -123,6 +125,9 @@ func FindTemperatureControllerByName(name string) *TemperatureController {
 	database.FetchDatabase().Debug().
 		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "heatSettings", controller.ID).
 		First(&controller.HeatSettings)
+	database.FetchDatabase().Debug().
+		Where("temperature_controller_id = ?", controller.ID).
+		First(&controller.TempProbeDetails)
 	controllers = append(controllers, controller)
 	return controller
 }
@@ -161,6 +166,9 @@ func FindTemperatureControllerByID(id string) *TemperatureController {
 	database.FetchDatabase().Debug().
 		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "heatSettings", controller.ID).
 		First(&controller.HeatSettings)
+	database.FetchDatabase().Debug().
+		Where("temperature_controller_id = ?", controller.ID).
+		First(&controller.TempProbeDetails)
 	controllers = append(controllers, controller)
 	return controller
 }
@@ -237,18 +245,75 @@ func (c *TemperatureController) RemoveProbe(physAddr string) error {
 
 // UpdateOutput updates the temperatures and decides how to control the outputs
 func (c *TemperatureController) UpdateOutput() {
+	if len(c.TempProbeDetails) == 0 {
+		return
+	}
+
 	if len(c.LastReadings) >= 5 {
 		c.LastReadings = c.LastReadings[1:5]
+	}
+	for _, t := range c.TempProbeDetails {
+		t.UpdateReading()
 	}
 	averageTemp := c.AverageTemperature()
 	c.LastReadings = append(c.LastReadings, averageTemp)
 	switch c.Mode {
 	case "auto":
 		c.CalculatedDuty = c.Calculate(averageTemp, nil)
+		if c.OutputControl == nil {
+			return
+		}
+		c.OutputControl.DutyCycle = c.CalculatedDuty
+		fmt.Printf("Calculated %v\n", c.CalculatedDuty)
+		if c.HeatSettings.Configured && !c.CoolSettings.Configured {
+			c.OutputControl.CycleTime = c.HeatSettings.CycleTime
+		} else if c.CalculatedDuty >= 0 && c.HeatSettings.Configured {
+			c.OutputControl.CycleTime = c.HeatSettings.CycleTime
+		} else if c.CoolSettings.Configured {
+			c.OutputControl.CycleTime = c.CoolSettings.CycleTime
+		}
 	case "manual":
+		if c.OutputControl == nil || !c.ManualSettings.Configured {
+			return
+		}
+		c.OutputControl.DutyCycle = c.ManualSettings.DutyCycle
+		c.OutputControl.CycleTime = c.ManualSettings.CycleTime
 	case "off":
+		if c.OutputControl == nil {
+			return
+		}
+		c.OutputControl.DutyCycle = 0
 	case "hysteria":
+		// TODO: Implement hysteria
+	}
+}
 
+// RunControl -> Run the output controller for a heating output
+func (c *TemperatureController) RunControl() {
+	fmt.Printf("Starting temperature controller %v\n", c.Name)
+	duration, err := time.ParseDuration("5s")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ticker := time.NewTicker(duration)
+
+	c.Running = true
+
+	for {
+		select {
+		case <-ticker.C:
+			if !c.Running {
+				ticker.Stop()
+				fmt.Printf("Stopping %v", c.Name)
+				c.quitOutputControl <- struct{}{}
+				return
+			}
+			c.UpdateOutput()
+		case <-Context.Done():
+			ticker.Stop()
+			return
+		}
 	}
 }
 
@@ -256,7 +321,6 @@ func (c *TemperatureController) UpdateOutput() {
 func (c *TemperatureController) AverageTemperature() physic.Temperature {
 	var totalTemp int64
 	for _, probe := range c.TempProbeDetails {
-		log.Printf("%v: %v", totalTemp, probe.ReadingRaw.Celsius())
 		totalTemp += (int64)(probe.ReadingRaw)
 	}
 
@@ -344,20 +408,25 @@ func (c *TemperatureController) ApplySettings(newSettings model.TemperatureContr
 	if newSettings.Mode != nil {
 		c.Mode = *newSettings.Mode
 	}
+
+	if newSettings.SetPoint != nil {
+		err := c.SetPointRaw.Set(*newSettings.SetPoint)
+		if err != nil {
+			return err
+		}
+	}
 	database.Save(c)
 
 	if c.HeatSettings.Gpio != "" || c.CoolSettings.Gpio != "" {
 		if c.OutputControl == nil {
 			log.Println("Turning on output control")
-			heatingPin := OutPin{Identifier: c.HeatSettings.Gpio, FriendlyName: "Heating"}
-			coolingPin := OutPin{Identifier: c.CoolSettings.Gpio, FriendlyName: "Cooling"}
-			outputControl := OutputControl{HeatOutput: &heatingPin, CoolOutput: &coolingPin, DutyCycle: c.ManualSettings.DutyCycle, CycleTime: c.HeatSettings.CycleTime}
+			outputControl := OutputControl{}
 			c.OutputControl = &outputControl
-			go c.OutputControl.RunControl()
+			c.OutputControl.UpdateGpios(c.HeatSettings.Gpio, c.CoolSettings.Gpio)
+			c.quitOutputControl = make(chan struct{})
+			go c.OutputControl.RunControl(c.quitOutputControl)
 		} else {
-			log.Println("Updating output control")
-			c.OutputControl.DutyCycle = c.ManualSettings.DutyCycle
-			c.OutputControl.CycleTime = c.HeatSettings.CycleTime
+			c.OutputControl.UpdateGpios(c.HeatSettings.Gpio, c.CoolSettings.Gpio)
 		}
 	} else {
 		log.Println("Turning off output control")

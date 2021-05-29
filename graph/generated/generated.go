@@ -697,6 +697,9 @@ input TemperatureControllerSettingsInput {
 
   """The manual settings for this temperature controller"""
   manualSettings: ManualSettingsInput
+
+  """The target for auto mode"""
+  setPoint: String
 }
 
 type Query {
@@ -3953,6 +3956,14 @@ func (ec *executionContext) unmarshalInputTemperatureControllerSettingsInput(ctx
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("manualSettings"))
 			it.ManualSettings, err = ec.unmarshalOManualSettingsInput2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐManualSettingsInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "setPoint":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("setPoint"))
+			it.SetPoint, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
