@@ -34,16 +34,15 @@ func (t *TemperatureProbe) UpdateTemperature(newTemp string) error {
 
 // Reading The current temperature reading for the probe
 func (t *TemperatureProbe) Reading() string {
+	if t == nil {
+		return ""
+	}
 	return t.ReadingRaw.String()
 }
 
 // GetTemperature -> Get the probe object for a physical address
 func GetTemperature(physAddr string) *TemperatureProbe {
-	probe := probes[physAddr]
-	if probe != nil {
-		log.Printf("Found probe for %v: %v\n", physAddr, probe)
-	}
-	return probe
+	return probes[physAddr]
 }
 
 // GetProbes -> Get all the probes
@@ -58,7 +57,7 @@ func GetProbes() []*TemperatureProbe {
 }
 
 // ReadAddresses -> Update the TemperatureProbes with the current value from the device
-func ReadAddresses(oneBus *netlink.OneWire, messages chan string) {
+func ReadAddresses(oneBus *netlink.OneWire, messages *chan string) {
 	for _, probe := range probes {
 		// init ds18b20
 		sensor, _ := ds18b20.New(oneBus, probe.Address, 10)
@@ -77,13 +76,17 @@ func ReadAddresses(oneBus *netlink.OneWire, messages chan string) {
 		probe := probes[probe.PhysAddr]
 		probe.Updated = time.Now()
 		probe.ReadingRaw = temp
-		messages <- fmt.Sprintf("Reading device %v: %v", probe.PhysAddr, temp)
+		if messages != nil {
+			*messages <- fmt.Sprintf("Reading device %v: %v", probe.PhysAddr, temp)
+		}
 	}
 }
 
 // ReadTemperatures Read the temperatures on an infinite ticker loop
-func ReadTemperatures(m chan string, quit chan struct{}) {
-	defer close(m)
+func ReadTemperatures(m *chan string, quit chan struct{}) {
+	if m != nil {
+		defer close(*m)
+	}
 	fmt.Println("Reading temps.")
 
 	oneBus, err := netlink.New(001)
@@ -105,15 +108,18 @@ func ReadTemperatures(m chan string, quit chan struct{}) {
 		}
 		addrBytes := make([]byte, 8)
 		binary.LittleEndian.PutUint64(addrBytes, uint64(address))
-		fmt.Printf("%v", addrBytes)
 		physAddr := "" + hex.EncodeToString(addrBytes[0:1]) + "-" + hex.EncodeToString(reverse(addrBytes[1:7]))
-		fmt.Printf("Found %v", physAddr)
+		fmt.Printf("Found %v\n", physAddr)
 		probes[physAddr] = &TemperatureProbe{
 			PhysAddr: physAddr,
 			Address:  address,
 		}
 	}
-	ticker := time.NewTicker(5 * time.Second)
+	duration, err := time.ParseDuration("5s")
+	if err != nil {
+		log.Fatal(err)
+	}
+	ticker := time.NewTicker(duration)
 
 	for {
 		select {

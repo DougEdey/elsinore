@@ -74,6 +74,8 @@ type TemperatureControllerSettingsInput struct {
 	HysteriaSettings *HysteriaSettingsInput `json:"hysteriaSettings"`
 	// The manual settings for this temperature controller
 	ManualSettings *ManualSettingsInput `json:"manualSettings"`
+	// The target for auto mode
+	SetPoint *string `json:"setPoint"`
 }
 
 // A device that reads a temperature
