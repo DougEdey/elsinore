@@ -42,3 +42,35 @@ func TestGetProbes(t *testing.T) {
 		}
 	})
 }
+
+func TestBasicFunctions(t *testing.T) {
+	t.Run("A nil temperature probe returns an empty string", func(t *testing.T) {
+		p := (*hardware.TemperatureProbe)(nil)
+		if p.Reading() != "" {
+			t.Errorf("Expected an empty string but got %v", p.Reading())
+		}
+	})
+
+	p := hardware.TemperatureProbe{PhysAddr: "ATest"}
+
+	t.Run("Update temperature returns errors from the underlying call", func(t *testing.T) {
+		err := p.UpdateTemperature(("Foo"))
+		if err == nil {
+			t.Error("Input of Foo should not be valid")
+		}
+	})
+
+	t.Run("Update temperature sets the value", func(t *testing.T) {
+		err := p.UpdateTemperature(("23C"))
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
+	t.Run("Reading returns the current temperate", func(t *testing.T) {
+		val := p.Reading()
+		if val != "23°C" {
+			t.Errorf("Temperature should be 23C, but was %v", val)
+		}
+	})
+}

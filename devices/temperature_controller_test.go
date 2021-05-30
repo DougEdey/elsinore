@@ -1,6 +1,7 @@
 package devices_test
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/dougedey/elsinore/database"
 	"github.com/dougedey/elsinore/devices"
+	"periph.io/x/periph/conn/gpio/gpiotest"
 	"periph.io/x/periph/conn/physic"
 )
 
@@ -96,11 +98,35 @@ func TestCreateTemperatureController(t *testing.T) {
 }
 
 func TestPersistenceTemperatureController(t *testing.T) {
+	t.Run("When no DB is configured, nil is returned", func(t *testing.T) {
+		var tempController *devices.TemperatureController = devices.FindTemperatureControllerByID("1")
+
+		if tempController != nil {
+			t.Fatalf("Expected the temperature controller to be called nil, but got %v", tempController)
+		}
+	})
+
 	setupTestDb(t)
 	devices.ClearControllers()
 	probe := devices.TempProbeDetail{
 		PhysAddr: "ARealAddress",
 	}
+
+	t.Run("A non existant ID returns nil", func(t *testing.T) {
+		var tempController *devices.TemperatureController = devices.FindTemperatureControllerByID("10000")
+
+		if tempController != nil {
+			t.Fatalf("Expected the temperature controller to be called nil, but got %v", tempController)
+		}
+	})
+
+	t.Run("An invalid ID returns nil", func(t *testing.T) {
+		var tempController *devices.TemperatureController = devices.FindTemperatureControllerByID("f")
+
+		if tempController != nil {
+			t.Fatalf("Expected the temperature controller to be called nil, but got %v", tempController)
+		}
+	})
 
 	t.Run("A new Temperature controller is persisted to the DB when configured", func(t *testing.T) {
 		devices.ClearControllers()
@@ -117,6 +143,46 @@ func TestPersistenceTemperatureController(t *testing.T) {
 		database.FetchDatabase().First(&dbTempController)
 		if dbTempController.Name != "sample" {
 			t.Fatalf("Expected the temperature controller to be called sample, but got %v", temperatureController.Name)
+		}
+
+		devices.ClearControllers()
+
+		var tempController *devices.TemperatureController = devices.FindTemperatureControllerByID(fmt.Sprint(dbTempController.ID))
+
+		if tempController.Name != "sample" {
+			t.Fatalf("Expected the temperature controller to be called sample, but got %v", tempController.Name)
+		}
+
+		devices.ClearControllers()
+
+		tempController = devices.FindTemperatureControllerByName(dbTempController.Name)
+
+		if tempController.Name != "sample" {
+			t.Fatalf("Expected the temperature controller to be called sample, but got %v", tempController.Name)
+		}
+	})
+
+	t.Run("A temperature controller can be deleted by id", func(t *testing.T) {
+		temperatureController, err := devices.CreateTemperatureController("sample", &probe)
+		if err != nil {
+			t.Fatalf("Failed to create the Temperature Controller: %v", err)
+		}
+
+		if temperatureController == nil {
+			t.Fatal("No Pid Controller returned for sample")
+		}
+		if temperatureController.ID == 0 {
+			t.Fatalf("No ID!")
+		}
+
+		p := devices.DeleteTemperatureControllerByID(fmt.Sprint(temperatureController.ID))
+		if len(p) != 1 {
+			t.Fatalf("Expected one probe, but got %v", len(p))
+		}
+
+		var dbTempController *devices.TemperatureController = devices.FindTemperatureControllerByName("sample")
+		if dbTempController != nil {
+			t.Fatalf("Expected nil but got %v", dbTempController)
 		}
 	})
 }
@@ -206,6 +272,75 @@ func TestTemperatureControllerUpdateOutput(t *testing.T) {
 
 		if &temperatureController.LastReadings[0] == &toDelete {
 			t.Fatalf("Expected %v to not be the same as the deleted value!", temperatureController.LastReadings[0])
+		}
+	})
+
+	t.Run("When auto mode and no output control, do nothing", func(t *testing.T) {
+		temperatureController.Mode = "auto"
+		temperatureController.UpdateOutput()
+	})
+
+	t.Run("When off mode and no output control, do nothing", func(t *testing.T) {
+		temperatureController.Mode = "off"
+		temperatureController.UpdateOutput()
+	})
+
+	t.Run("When manual mode and no output control, do nothing", func(t *testing.T) {
+		temperatureController.Mode = "manual"
+		temperatureController.UpdateOutput()
+	})
+
+	t.Run("When auto mode and only heat settings configured, use the cool settings cycle time", func(t *testing.T) {
+		temperatureController.Mode = "auto"
+		testPin := gpiotest.Pin{N: "GPIO21", Num: 10, Fn: "I2C1_SDA"}
+		out21 := devices.OutPin{Identifier: "GPIO21", FriendlyName: "GPIO21", PinIO: &testPin}
+		outputControl := devices.OutputControl{HeatOutput: &out21}
+		temperatureController.OutputControl = &outputControl
+		temperatureController.HeatSettings = devices.PidSettings{Configured: true, CycleTime: 12, Proportional: 1}
+		temperatureController.SetPointRaw.Set("40C")
+		temperatureController.UpdateOutput()
+
+		if outputControl.CycleTime != temperatureController.HeatSettings.CycleTime {
+			t.Fatalf("Cycle time incorrect: %v, expected: %v", outputControl.CycleTime, temperatureController.HeatSettings.CycleTime)
+		}
+	})
+
+	t.Run("When auto mode and only cool settings configured, use the cool settings cycle time", func(t *testing.T) {
+		temperatureController.Mode = "auto"
+		testPin := gpiotest.Pin{N: "GPIO21", Num: 10, Fn: "I2C1_SDA"}
+		out21 := devices.OutPin{Identifier: "GPIO21", FriendlyName: "GPIO21", PinIO: &testPin}
+		outputControl := devices.OutputControl{HeatOutput: &out21}
+		temperatureController.OutputControl = &outputControl
+		temperatureController.HeatSettings.Configured = false
+		temperatureController.CoolSettings = devices.PidSettings{Configured: true, CycleTime: 13, Proportional: 1}
+		temperatureController.SetPointRaw.Set("40C")
+		temperatureController.UpdateOutput()
+
+		if outputControl.CycleTime != temperatureController.CoolSettings.CycleTime {
+			t.Fatalf("Cycle time incorrect: %v, expected: %v", outputControl.CycleTime, temperatureController.HeatSettings.CycleTime)
+		}
+	})
+
+	t.Run("When manual mode and output control, use the manual mode settings", func(t *testing.T) {
+		temperatureController.Mode = "manual"
+		temperatureController.ManualSettings = devices.ManualSettings{DutyCycle: 90, CycleTime: 14, Configured: true}
+		temperatureController.UpdateOutput()
+
+		if temperatureController.OutputControl.DutyCycle != 90 {
+			t.Fatalf("Expected Duty cycle of 90, but got %v", temperatureController.DutyCycle)
+		}
+
+		if temperatureController.OutputControl.CycleTime != 14 {
+			t.Fatalf("Expected cycle time of 14, but got %v", temperatureController.DutyCycle)
+		}
+	})
+
+	t.Run("When mode off with output control, set the duty cycle to 0", func(t *testing.T) {
+		temperatureController.Mode = "off"
+		temperatureController.UpdateOutput()
+
+		if temperatureController.OutputControl.DutyCycle != 0 {
+			t.Fatalf("Expected Duty cycle of 0, but got %v", temperatureController.DutyCycle)
 		}
 	})
 }
@@ -318,5 +453,41 @@ func TestTemperatureControllerCalculate(t *testing.T) {
 			t.Fatalf("Expected previous calculation time to be %v, but got %v", stubNext(), temperatureController.PreviousCalculationTime)
 		}
 	})
+}
 
+func TestRemoveProbeFromController(t *testing.T) {
+	devices.ClearControllers()
+	probe := devices.TempProbeDetail{
+		PhysAddr: "ARealAddress",
+	}
+	temperatureController, err := devices.CreateTemperatureController("sample", &probe)
+	if err != nil {
+		t.Fatalf("Failed to create the Temperature Controller: %v", err)
+	}
+
+	if temperatureController == nil {
+		t.Fatal("No Pid Controller returned for sample")
+	}
+
+	t.Run("Can remove the final probe from a controller", func(t *testing.T) {
+		err := temperatureController.RemoveProbe("ARealAddress")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(temperatureController.TempProbeDetails) != 0 {
+			t.Fatalf("Expected no probes but got %v! %v", len(temperatureController.TempProbeDetails), temperatureController.TempProbeDetails)
+		}
+	})
+
+	t.Run("A non existent probe returns an error", func(t *testing.T) {
+		err := temperatureController.RemoveProbe("AFakeAddress")
+		if err == nil {
+			t.Fatal("Expected an error but didn't get one")
+		}
+
+		if err.Error() != "could not find a probe with address AFakeAddress" {
+			t.Fatalf("Incorrect error: %v", err.Error())
+		}
+	})
 }
