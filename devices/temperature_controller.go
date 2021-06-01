@@ -119,16 +119,7 @@ func FindTemperatureControllerByName(name string) *TemperatureController {
 		return nil
 	}
 
-	database.FetchDatabase().Debug().
-		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "coolSettings", controller.ID).
-		First(&controller.CoolSettings)
-	database.FetchDatabase().Debug().
-		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "heatSettings", controller.ID).
-		First(&controller.HeatSettings)
-	database.FetchDatabase().Debug().
-		Where("temperature_controller_id = ?", controller.ID).
-		First(&controller.TempProbeDetails)
-	controllers = append(controllers, controller)
+	controller.loadController()
 	return controller
 }
 
@@ -160,16 +151,7 @@ func FindTemperatureControllerByID(id string) *TemperatureController {
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return nil
 	}
-	database.FetchDatabase().Debug().
-		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "coolSettings", controller.ID).
-		First(&controller.CoolSettings)
-	database.FetchDatabase().Debug().
-		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "heatSettings", controller.ID).
-		First(&controller.HeatSettings)
-	database.FetchDatabase().Debug().
-		Where("temperature_controller_id = ?", controller.ID).
-		First(&controller.TempProbeDetails)
-	controllers = append(controllers, controller)
+	controller.loadController()
 	return controller
 }
 
@@ -182,13 +164,21 @@ func DeleteTemperatureControllerByID(id string) []*string {
 	}
 	controller = FindTemperatureControllerByID(id)
 	if controller == nil {
-		fmt.Printf("Could not find the recordx for %v", id)
+		fmt.Printf("Could not find the record for %v", id)
 		return nil
 	}
 
 	probeList := []*string{}
 	for _, t := range controller.TempProbeDetails {
 		probeList = append(probeList, &t.PhysAddr)
+	}
+
+	for i, c := range controllers {
+		if controller.ID == c.ID {
+			controllers[i] = controllers[len(controllers)-1]
+			controllers = controllers[:len(controllers)-1]
+			break
+		}
 	}
 
 	database.FetchDatabase().Delete(&controller, id)
@@ -527,4 +517,17 @@ func (t *TempProbeDetail) UpdateReading() {
 	if err != nil {
 		log.Printf("Failed to update %v temperature details: %v", t.PhysAddr, err)
 	}
+}
+
+func (c *TemperatureController) loadController() {
+	database.FetchDatabase().Debug().
+		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "coolSettings", c.ID).
+		First(&c.CoolSettings)
+	database.FetchDatabase().Debug().
+		Where("temperature_controller_type = ? AND temperature_controller_id = ?", "heatSettings", c.ID).
+		First(&c.HeatSettings)
+	database.FetchDatabase().Debug().
+		Where("temperature_controller_id = ?", c.ID).
+		First(&c.TempProbeDetails)
+	controllers = append(controllers, c)
 }

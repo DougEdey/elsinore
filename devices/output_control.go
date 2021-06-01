@@ -45,7 +45,7 @@ func (op *OutPin) off() bool {
 		return false
 	}
 
-	if op.offTime != nil {
+	if op.offTime != nil && op.PinIO.Read() == gpio.Low {
 		return false
 	}
 
@@ -63,7 +63,7 @@ func (op *OutPin) on() bool {
 		return false
 	}
 
-	if op.onTime != nil {
+	if op.onTime != nil && op.PinIO.Read() == gpio.High {
 		return false
 	}
 
@@ -141,6 +141,7 @@ func (o *OutputControl) CalculateOutput() {
 
 	if o.DutyCycle == 0 {
 		o.HeatOutput.off()
+		o.CoolOutput.off()
 	} else if o.DutyCycle == 100 {
 		o.CoolOutput.off()
 		if o.HeatOutput.on() {
