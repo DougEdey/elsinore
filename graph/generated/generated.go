@@ -88,10 +88,10 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		FetchProbes           func(childComplexity int, addresses []*string) int
-		Probe                 func(childComplexity int, address *string) int
-		ProbeList             func(childComplexity int) int
-		TemperatureContollers func(childComplexity int, name *string) int
+		FetchProbes            func(childComplexity int, addresses []*string) int
+		Probe                  func(childComplexity int, address *string) int
+		ProbeList              func(childComplexity int) int
+		TemperatureControllers func(childComplexity int, name *string) int
 	}
 
 	TempProbeDetails struct {
@@ -143,7 +143,7 @@ type QueryResolver interface {
 	Probe(ctx context.Context, address *string) (*model.TemperatureProbe, error)
 	ProbeList(ctx context.Context) ([]*model.TemperatureProbe, error)
 	FetchProbes(ctx context.Context, addresses []*string) ([]*model.TemperatureProbe, error)
-	TemperatureContollers(ctx context.Context, name *string) ([]*devices.TemperatureController, error)
+	TemperatureControllers(ctx context.Context, name *string) ([]*devices.TemperatureController, error)
 }
 type TemperatureControllerResolver interface {
 	ID(ctx context.Context, obj *devices.TemperatureController) (string, error)
@@ -378,17 +378,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.ProbeList(childComplexity), true
 
-	case "Query.temperatureContollers":
-		if e.complexity.Query.TemperatureContollers == nil {
+	case "Query.temperatureControllers":
+		if e.complexity.Query.TemperatureControllers == nil {
 			break
 		}
 
-		args, err := ec.field_Query_temperatureContollers_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_temperatureControllers_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.TemperatureContollers(childComplexity, args["name"].(*string)), true
+		return e.complexity.Query.TemperatureControllers(childComplexity, args["name"].(*string)), true
 
 	case "TempProbeDetails.id":
 		if e.complexity.TempProbeDetails.ID == nil {
@@ -712,7 +712,7 @@ type Query {
   fetchProbes(addresses: [String]): [TemperatureProbe]
 
   """Fetch all the temperature controllers, or a subset by name"""
-  temperatureContollers(name: String): [TemperatureController]
+  temperatureControllers(name: String): [TemperatureController]
 }
 
 type TemperatureController {
@@ -975,7 +975,7 @@ func (ec *executionContext) field_Query_probe_args(ctx context.Context, rawArgs 
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_temperatureContollers_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_temperatureControllers_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 *string
@@ -1914,7 +1914,7 @@ func (ec *executionContext) _Query_fetchProbes(ctx context.Context, field graphq
 	return ec.marshalOTemperatureProbe2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐTemperatureProbe(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_temperatureContollers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_temperatureControllers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1931,7 +1931,7 @@ func (ec *executionContext) _Query_temperatureContollers(ctx context.Context, fi
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_temperatureContollers_args(ctx, rawArgs)
+	args, err := ec.field_Query_temperatureControllers_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -1939,7 +1939,7 @@ func (ec *executionContext) _Query_temperatureContollers(ctx context.Context, fi
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TemperatureContollers(rctx, args["name"].(*string))
+		return ec.resolvers.Query().TemperatureControllers(rctx, args["name"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4228,7 +4228,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_fetchProbes(ctx, field)
 				return res
 			})
-		case "temperatureContollers":
+		case "temperatureControllers":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -4236,7 +4236,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_temperatureContollers(ctx, field)
+				res = ec._Query_temperatureControllers(ctx, field)
 				return res
 			})
 		case "__type":
