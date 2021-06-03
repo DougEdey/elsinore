@@ -6,6 +6,7 @@ require (
 	bou.ke/monkey v1.0.2
 	github.com/99designs/gqlgen v0.13.0
 	github.com/kr/pretty v0.2.1 // indirect
+	github.com/rs/zerolog v1.22.0
 	github.com/stretchr/testify v1.4.0
 	github.com/vektah/gqlparser/v2 v2.1.0
 	github.com/ztrue/shutdown v0.1.1

@@ -3,13 +3,13 @@ package devices
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
 	"github.com/dougedey/elsinore/database"
 	"github.com/dougedey/elsinore/graph/model"
 	"github.com/dougedey/elsinore/hardware"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"periph.io/x/periph/conn/physic"
@@ -134,10 +134,10 @@ func FindTemperatureControllerByID(id string) *TemperatureController {
 	if err != nil {
 		return nil
 	}
-	fmt.Printf("Converting %v to an int %v, %v\n", id, intID, len((controllers)))
+	log.Info().Msgf("Converting %v to an int %v, %v\n", id, intID, len((controllers)))
 
 	for i := range controllers {
-		fmt.Printf("Comparing %v to %v\n", controllers[i].ID, uint(intID))
+		log.Info().Msgf("Comparing %v to %v\n", controllers[i].ID, uint(intID))
 		if controllers[i].ID == uint(intID) {
 			return controllers[i]
 		}
@@ -164,7 +164,7 @@ func DeleteTemperatureControllerByID(id string) []*string {
 	}
 	controller = FindTemperatureControllerByID(id)
 	if controller == nil {
-		fmt.Printf("Could not find the record for %v", id)
+		log.Info().Msgf("Could not find the record for %v", id)
 		return nil
 	}
 
@@ -212,7 +212,7 @@ func CreateTemperatureController(name string, probe *TempProbeDetail) (*Temperat
 		database.Create(&controller)
 		controllers = append(controllers, controller)
 	} else {
-		fmt.Printf("Found controller for %v", controller.ID)
+		log.Info().Msgf("Found controller for %v", controller.ID)
 	}
 
 	controller.TempProbeDetails = append(controller.TempProbeDetails, probe)
@@ -254,7 +254,7 @@ func (c *TemperatureController) UpdateOutput() {
 			return
 		}
 		c.OutputControl.DutyCycle = c.CalculatedDuty
-		fmt.Printf("Calculated %v\n", c.CalculatedDuty)
+		log.Info().Msgf("Calculated %v\n", c.CalculatedDuty)
 		if c.HeatSettings.Configured && !c.CoolSettings.Configured {
 			c.OutputControl.CycleTime = c.HeatSettings.CycleTime
 		} else if c.CalculatedDuty >= 0 && c.HeatSettings.Configured {
@@ -280,10 +280,10 @@ func (c *TemperatureController) UpdateOutput() {
 
 // RunControl -> Run the output controller for a heating output
 func (c *TemperatureController) RunControl() {
-	fmt.Printf("Starting temperature controller %v\n", c.Name)
+	log.Info().Msgf("Starting temperature controller %v\n", c.Name)
 	duration, err := time.ParseDuration("5s")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("Failed to parse 5s as a duration")
 	}
 
 	ticker := time.NewTicker(duration)
@@ -295,7 +295,7 @@ func (c *TemperatureController) RunControl() {
 		case <-ticker.C:
 			if !c.Running {
 				ticker.Stop()
-				fmt.Printf("Stopping %v", c.Name)
+				log.Info().Msgf("Stopping %v", c.Name)
 				c.quitOutputControl <- struct{}{}
 				return
 			}
@@ -409,7 +409,7 @@ func (c *TemperatureController) ApplySettings(newSettings model.TemperatureContr
 
 	if c.HeatSettings.Gpio != "" || c.CoolSettings.Gpio != "" {
 		if c.OutputControl == nil {
-			log.Println("Turning on output control")
+			log.Info().Msg("Turning on output control")
 			outputControl := OutputControl{}
 			c.OutputControl = &outputControl
 			c.OutputControl.UpdateGpios(c.HeatSettings.Gpio, c.CoolSettings.Gpio)
@@ -419,7 +419,7 @@ func (c *TemperatureController) ApplySettings(newSettings model.TemperatureContr
 			c.OutputControl.UpdateGpios(c.HeatSettings.Gpio, c.CoolSettings.Gpio)
 		}
 	} else {
-		log.Println("Turning off output control")
+		log.Info().Msg("Turning off output control")
 		c.OutputControl.Reset()
 		c.OutputControl = nil
 	}

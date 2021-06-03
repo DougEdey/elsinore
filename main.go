@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/dougedey/elsinore/database"
@@ -15,6 +16,9 @@ import (
 	"github.com/dougedey/elsinore/graph"
 	"github.com/dougedey/elsinore/graph/generated"
 	"github.com/dougedey/elsinore/hardware"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 	"github.com/ztrue/shutdown"
 	"periph.io/x/periph/conn/onewire"
 	"periph.io/x/periph/host"
@@ -28,6 +32,8 @@ func main() {
 	dbName := flag.String("db_name", "elsinore", "The path/name of the local database")
 	testDeviceFlag := flag.Bool("test_device", false, "Create a test device")
 	flag.Parse()
+
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	quit := make(chan struct{})
 
@@ -46,10 +52,11 @@ func main() {
 
 	_, err := host.Init()
 	if err != nil {
-		log.Fatalf("failed to initialize periph: %v", err)
+		log.Fatal().
+			Msgf("failed to initialize periph: %v", err)
 	}
 
-	fmt.Println("Loaded and looking for temperatures")
+	log.Print("Loaded and looking for temperatures")
 	// messages := make(chan string)
 	go hardware.ReadTemperatures(nil, quit)
 	go temperatureControllerRunner()
@@ -63,7 +70,7 @@ func main() {
 		devices.CancelFunc()
 		shutdownErr := srv.Shutdown(devices.Context)
 		if shutdownErr != nil {
-			log.Println(shutdownErr)
+			log.Print(shutdownErr)
 		}
 	})
 
@@ -72,23 +79,29 @@ func main() {
 
 func startHTTPServer(portPtr *string, graphiqlFlag *bool, wg *sync.WaitGroup) *http.Server {
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
+	srv.SetErrorPresenter(func(ctx context.Context, e error) *gqlerror.Error {
+		err := graphql.DefaultErrorPresenter(ctx, e)
+		log.Error().Err(err).Msg("GraphQL Error")
+		return err
+	})
 	httpSrv := &http.Server{Addr: ":" + *portPtr}
 
 	if *graphiqlFlag {
 		http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	}
-	http.Handle("/query", srv)
+	http.Handle("/graphql", srv)
 
 	go func() {
 		defer wg.Done()
-		log.Fatal(httpSrv.ListenAndServe())
+		err := httpSrv.ListenAndServe()
+		log.Fatal().Err(err).Msg("Failed to start server")
 	}()
 
 	fullPort := fmt.Sprintf(":%v", *portPtr)
 
 	name, err := os.Hostname()
 	if err != nil {
-		fmt.Printf("Failed to get hostname: %v\n", err)
+		log.Error().Err(err).Msg("Failed to get hostname: %v")
 	} else {
 		fmt.Printf("CORS API Listening on: http://%v%v/graphql \n", name, fullPort)
 		if *graphiqlFlag {
@@ -102,7 +115,7 @@ func temperatureControllerRunner() {
 	fmt.Println("Monitoring for temperature controller changes...")
 	duration, err := time.ParseDuration("1000ms")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("Failed to parse 1000ms as a duration")
 	}
 
 	ticker := time.NewTicker(duration)
@@ -112,7 +125,7 @@ func temperatureControllerRunner() {
 		case <-ticker.C:
 			for _, controller := range devices.AllTemperatureControllers() {
 				if !controller.Running {
-					fmt.Printf("Starting %v!\n", controller.Name)
+					log.Info().Msgf("Starting %v!\n", controller.Name)
 					go controller.RunControl()
 				}
 			}
