@@ -15,7 +15,7 @@ import (
 	"periph.io/x/periph/conn/physic"
 )
 
-var controllers []*TemperatureController
+var controllers []*TemperatureController = nil
 
 // TempProbeDetail is the persisted model for TemperatureProbe
 // this is to simplify loading data so that TemperatureProbe represents the physical state and this represents the cached state
@@ -125,6 +125,10 @@ func FindTemperatureControllerByName(name string) *TemperatureController {
 
 // AllTemperatureControllers returns all the temperature controllers
 func AllTemperatureControllers() []*TemperatureController {
+	if controllers == nil && database.FetchDatabase() != nil {
+		log.Info().Msg("Controllers array is nil, checking the database...")
+		database.FetchDatabase().Debug().Preload(clause.Associations).Find(&controllers)
+	}
 	return controllers
 }
 

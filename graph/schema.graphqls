@@ -116,7 +116,7 @@ type Query {
   fetchProbes(addresses: [String]): [TemperatureProbe]
 
   """Fetch all the temperature controllers, or a subset by name"""
-  temperatureContollers(name: String): [TemperatureController]
+  temperatureControllers(name: String): [TemperatureController]
 }
 
 type TemperatureController {

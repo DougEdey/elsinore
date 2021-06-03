@@ -16,6 +16,8 @@ import (
 	"github.com/dougedey/elsinore/graph"
 	"github.com/dougedey/elsinore/graph/generated"
 	"github.com/dougedey/elsinore/hardware"
+	"github.com/go-chi/chi"
+	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -59,6 +61,7 @@ func main() {
 	log.Print("Loaded and looking for temperatures")
 	// messages := make(chan string)
 	go hardware.ReadTemperatures(nil, quit)
+	devices.AllTemperatureControllers()
 	go temperatureControllerRunner()
 
 	httpServerExitDone := &sync.WaitGroup{}
@@ -78,18 +81,29 @@ func main() {
 }
 
 func startHTTPServer(portPtr *string, graphiqlFlag *bool, wg *sync.WaitGroup) *http.Server {
+	router := chi.NewRouter()
+
+	// Add CORS middleware around every request
+	// See https://github.com/rs/cors for full option listing
+	router.Use(cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: false,
+		Debug:            true,
+	}).Handler)
+
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
+
 	srv.SetErrorPresenter(func(ctx context.Context, e error) *gqlerror.Error {
 		err := graphql.DefaultErrorPresenter(ctx, e)
 		log.Error().Err(err).Msg("GraphQL Error")
 		return err
 	})
-	httpSrv := &http.Server{Addr: ":" + *portPtr}
+	httpSrv := &http.Server{Addr: ":" + *portPtr, Handler: router}
 
 	if *graphiqlFlag {
-		http.Handle("/", playground.Handler("GraphQL playground", "/query"))
+		router.Handle("/", playground.Handler("GraphQL playground", "/graphiql"))
 	}
-	http.Handle("/graphql", srv)
+	router.Handle("/graphql", srv)
 
 	go func() {
 		defer wg.Done()

@@ -103,7 +103,7 @@ func (r *queryResolver) FetchProbes(ctx context.Context, addresses []*string) ([
 	return deviceList, missingError
 }
 
-func (r *queryResolver) TemperatureContollers(ctx context.Context, name *string) ([]*devices.TemperatureController, error) {
+func (r *queryResolver) TemperatureControllers(ctx context.Context, name *string) ([]*devices.TemperatureController, error) {
 	if name == nil {
 		return devices.AllTemperatureControllers(), nil
 	}

@@ -59,17 +59,22 @@ func GetProbes() []*TemperatureProbe {
 // ReadAddresses -> Update the TemperatureProbes with the current value from the device
 func ReadAddresses(oneBus *netlink.OneWire, messages *chan string) {
 	for _, probe := range probes {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Error().Msgf("Error reading temperature for %v", probe.PhysAddr)
+			}
+		}()
 		// init ds18b20
 		sensor, _ := ds18b20.New(oneBus, probe.Address, 10)
 		err := ds18b20.ConvertAll(oneBus, 10)
 		if err != nil {
-			log.Printf("Failed to update probe %v: %v", probe.PhysAddr, err)
+			log.Error().Err(err).Msgf("Failed to update probe %v", probe.PhysAddr)
 			continue
 		}
 
 		temp, err := sensor.LastTemp()
 		if err != nil {
-			log.Printf("Failed to get the last temp for %v: %v", probe.PhysAddr, err)
+			log.Error().Err(err).Msgf("Failed to get the last temp for %v", probe.PhysAddr)
 			continue
 		}
 
@@ -97,7 +102,7 @@ func ReadTemperatures(m *chan string, quit chan struct{}) {
 
 	// get 1wire address
 	addresses, _ := oneBus.Search(false)
-	log.Info().Msgf("Reading temps from %v devices.", addresses)
+	log.Info().Msgf("Reading temps from %v devices.", len(addresses))
 	for _, address := range addresses {
 		a := strconv.FormatUint(uint64(address), 16)
 
