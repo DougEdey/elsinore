@@ -2,8 +2,8 @@ package database
 
 import (
 	"fmt"
-	"log"
 
+	"github.com/rs/zerolog/log"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -13,7 +13,7 @@ var dbFile gorm.Dialector
 
 // InitDatabase Create a db in the dbName path/filename, and migrate it with the supplied models
 func InitDatabase(dbName *string, dst ...interface{}) {
-	fmt.Println("Loading database")
+	log.Info().Msgf("Loading database %v", *dbName)
 	var err error
 	dbFile = sqlite.Open(fmt.Sprintf("%v.db", *dbName))
 	datastore, err = gorm.Open(dbFile, &gorm.Config{
@@ -26,7 +26,7 @@ func InitDatabase(dbName *string, dst ...interface{}) {
 	// Migrate the schema
 	err = datastore.AutoMigrate(dst...)
 	if err != nil {
-		log.Panicf("Migration failed! Please check the logs! %v", err)
+		log.Fatal().Err(err).Msg("Migration failed! Please check the logs!")
 	}
 }
 
@@ -39,7 +39,7 @@ func FetchDatabase() *gorm.DB {
 func Close() {
 	sqlDB, err := datastore.DB()
 	if err != nil {
-		log.Panicf("NO DB to close! %v", err)
+		log.Fatal().Err(err).Msg("No DB to close!")
 	}
 	sqlDB.Close()
 	datastore = nil
@@ -59,9 +59,9 @@ func Save(dst interface{}) {
 	if datastore != nil {
 		result := datastore.Session(&gorm.Session{FullSaveAssociations: true}).Debug().Save(dst)
 		if result.Error != nil {
-			log.Print("No")
+			log.Error().Err(result.Error).Msg("Failed to save")
 		}
 	} else {
-		log.Printf("No database configured, not saving %v", dst)
+		log.Info().Msgf("No database configured, not saving %v", dst)
 	}
 }

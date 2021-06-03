@@ -4,10 +4,10 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"periph.io/x/periph/conn/onewire"
 	"periph.io/x/periph/conn/physic"
 	"periph.io/x/periph/devices/ds18b20"
@@ -87,7 +87,7 @@ func ReadTemperatures(m *chan string, quit chan struct{}) {
 	if m != nil {
 		defer close(*m)
 	}
-	fmt.Println("Reading temps.")
+	log.Info().Msgf("Reading temps.")
 
 	oneBus, err := netlink.New(001)
 	if err != nil {
@@ -97,7 +97,7 @@ func ReadTemperatures(m *chan string, quit chan struct{}) {
 
 	// get 1wire address
 	addresses, _ := oneBus.Search(false)
-	fmt.Printf("Reading temps from %v devices.\n", addresses)
+	log.Info().Msgf("Reading temps from %v devices.", addresses)
 	for _, address := range addresses {
 		a := strconv.FormatUint(uint64(address), 16)
 
@@ -109,7 +109,7 @@ func ReadTemperatures(m *chan string, quit chan struct{}) {
 		addrBytes := make([]byte, 8)
 		binary.LittleEndian.PutUint64(addrBytes, uint64(address))
 		physAddr := "" + hex.EncodeToString(addrBytes[0:1]) + "-" + hex.EncodeToString(reverse(addrBytes[1:7]))
-		fmt.Printf("Found %v\n", physAddr)
+		log.Info().Msgf("Found %v", physAddr)
 		probes[physAddr] = &TemperatureProbe{
 			PhysAddr: physAddr,
 			Address:  address,
@@ -117,7 +117,7 @@ func ReadTemperatures(m *chan string, quit chan struct{}) {
 	}
 	duration, err := time.ParseDuration("5s")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	ticker := time.NewTicker(duration)
 
@@ -127,7 +127,7 @@ func ReadTemperatures(m *chan string, quit chan struct{}) {
 			ReadAddresses(oneBus, m)
 		case <-quit:
 			ticker.Stop()
-			fmt.Println("Stop")
+			log.Info().Msg("Stop")
 			return
 		}
 	}
@@ -137,7 +137,7 @@ func ReadTemperatures(m *chan string, quit chan struct{}) {
 func LogTemperatures(messages chan string) {
 	for {
 		for message := range messages {
-			fmt.Println(message)
+			log.Info().Msg(message)
 		}
 	}
 }
