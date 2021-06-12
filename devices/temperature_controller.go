@@ -291,6 +291,7 @@ func (c *TemperatureController) RunControl() {
 	}
 
 	ticker := time.NewTicker(duration)
+	c.configureOutputControl()
 
 	c.Running = true
 
@@ -375,6 +376,7 @@ func (h *HysteriaSettings) MinTemp() string {
 
 // ApplySettings - Update the current temperature controller settings
 func (c *TemperatureController) ApplySettings(newSettings model.TemperatureControllerSettingsInput) error {
+	log.Logger.Info().Msgf("Updating controller %v", newSettings)
 	err := c.CoolSettings.ApplySettings(newSettings.CoolSettings)
 	if err != nil {
 		return err
@@ -395,6 +397,7 @@ func (c *TemperatureController) ApplySettings(newSettings model.TemperatureContr
 		return err
 	}
 
+	log.Logger.Info().Msgf("Name is %v", *newSettings.Name)
 	if newSettings.Name != nil {
 		c.Name = *newSettings.Name
 	}
@@ -411,6 +414,12 @@ func (c *TemperatureController) ApplySettings(newSettings model.TemperatureContr
 	}
 	database.Save(c)
 
+	c.configureOutputControl()
+	return nil
+}
+
+func (c *TemperatureController) configureOutputControl() {
+	log.Info().Msgf("Updated Output control, heat: %v, cool: %v", c.HeatSettings.Gpio, c.CoolSettings.Gpio)
 	if c.HeatSettings.Gpio != "" || c.CoolSettings.Gpio != "" {
 		if c.OutputControl == nil {
 			log.Info().Msg("Turning on output control")
@@ -427,7 +436,6 @@ func (c *TemperatureController) ApplySettings(newSettings model.TemperatureContr
 		c.OutputControl.Reset()
 		c.OutputControl = nil
 	}
-	return nil
 }
 
 // ApplySettings - Update the current pid settings

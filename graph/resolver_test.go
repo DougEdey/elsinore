@@ -277,7 +277,7 @@ func TestUpdateTemperatureControllerMutations(t *testing.T) {
 	t.Run("updateTemperatureController with an invalid ID returns an error", func(t *testing.T) {
 		err := c.Post(`
 		mutation {
-			updateTemperatureController(id: "1", controllerSettings: {}) {
+			updateTemperatureController(controllerSettings: { id: "1" }) {
 				id
 				name
 			}
@@ -299,7 +299,7 @@ func TestUpdateTemperatureControllerMutations(t *testing.T) {
 	t.Run("updateTemperatureController updates the name and makes no other changes", func(t *testing.T) {
 		c.MustPost(`
 		mutation {
-			updateTemperatureController(id: "1", controllerSettings: { name: "Updated name" }) {
+			updateTemperatureController(controllerSettings: { id: "1", name: "Updated name" }) {
 				id
 				name
 			}
@@ -317,7 +317,7 @@ func TestUpdateTemperatureControllerMutations(t *testing.T) {
 	t.Run("updateTemperatureController creates Cool settings", func(t *testing.T) {
 		err := c.Post(`
 		mutation {
-			updateTemperatureController(id: "1", controllerSettings: { name: "Updated name", coolSettings: { configured: true, cycleTime: 1 } }) {
+			updateTemperatureController(controllerSettings: { id: "1", name: "Updated name", coolSettings: { configured: true, cycleTime: 1 } }) {
 				id
 				name
 				coolSettings {
@@ -344,7 +344,7 @@ func TestUpdateTemperatureControllerMutations(t *testing.T) {
 	t.Run("updateTemperatureController creates Heat settings", func(t *testing.T) {
 		err := c.Post(`
 		mutation {
-			updateTemperatureController(id: "1", controllerSettings: { name: "Updated name", heatSettings: { configured: true, cycleTime: 4 } }) {
+			updateTemperatureController(controllerSettings: { id: "1", name: "Updated name", heatSettings: { configured: true, cycleTime: 4 } }) {
 				id
 				name
 				coolSettings {
@@ -378,7 +378,7 @@ func TestUpdateTemperatureControllerMutations(t *testing.T) {
 	t.Run("updateTemperatureController creates Manual settings", func(t *testing.T) {
 		err := c.Post(`
 		mutation {
-			updateTemperatureController(id: "1", controllerSettings: { name: "Updated name", manualSettings: { configured: true, cycleTime: 5, dutyCycle: 45 } }) {
+			updateTemperatureController(controllerSettings: { id: "1",  name: "Updated name", manualSettings: { configured: true, cycleTime: 5, dutyCycle: 45 } }) {
 				id
 				name
 				coolSettings {
@@ -419,7 +419,7 @@ func TestUpdateTemperatureControllerMutations(t *testing.T) {
 	t.Run("updateTemperatureController creates Manual settings", func(t *testing.T) {
 		err := c.Post(`
 		mutation {
-			updateTemperatureController(id: "1", controllerSettings: { name: "Updated name", hysteriaSettings: { configured: true, maxTemp: "103C" } }) {
+			updateTemperatureController(controllerSettings: { id: "1", name: "Updated name", hysteriaSettings: { configured: true, maxTemp: "103C" } }) {
 				id
 				name
 				coolSettings {

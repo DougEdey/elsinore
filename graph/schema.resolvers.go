@@ -41,10 +41,10 @@ func (r *mutationResolver) RemoveProbeFromTemperatureController(ctx context.Cont
 	return controller, error
 }
 
-func (r *mutationResolver) UpdateTemperatureController(ctx context.Context, id string, controllerSettings model.TemperatureControllerSettingsInput) (*devices.TemperatureController, error) {
-	controller := devices.FindTemperatureControllerByID(id)
+func (r *mutationResolver) UpdateTemperatureController(ctx context.Context, controllerSettings model.TemperatureControllerSettingsInput) (*devices.TemperatureController, error) {
+	controller := devices.FindTemperatureControllerByID(controllerSettings.ID)
 	if controller == nil {
-		return nil, fmt.Errorf("no controller could be found for: %v", id)
+		return nil, fmt.Errorf("no controller could be found for: %v", controllerSettings.ID)
 	}
 
 	err := controller.ApplySettings(controllerSettings)

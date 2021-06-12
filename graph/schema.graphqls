@@ -51,7 +51,7 @@ type ManualSettings {
 type Mutation {
   assignProbe(name: String!, address: String!): TemperatureController
   removeProbeFromTemperatureController(address: String!): TemperatureController
-  updateTemperatureController(id: ID!, controllerSettings: TemperatureControllerSettingsInput!): TemperatureController
+  updateTemperatureController(controllerSettings: TemperatureControllerSettingsInput!): TemperatureController
   deleteTemperatureController(id: ID!): DeleteTemperatureControllerReturnType
 }
 
@@ -84,6 +84,9 @@ type PidSettings {
 
 """Used to configure a controller"""
 input TemperatureControllerSettingsInput {
+  """The controller Id"""
+  id: ID!
+
   """The name of the controller."""
   name: String
 
