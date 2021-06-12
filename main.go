@@ -33,6 +33,7 @@ func main() {
 	graphiqlFlag := flag.Bool("graphiql", true, "Disable GraphiQL web UI")
 	dbName := flag.String("db_name", "elsinore", "The path/name of the local database")
 	testDeviceFlag := flag.Bool("test_device", false, "Create a test device")
+	autostartFlag := flag.Bool("autostart", false, "Autostart controllers from their previous state on startup")
 	flag.Parse()
 
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
@@ -61,7 +62,12 @@ func main() {
 	log.Print("Loaded and looking for temperatures")
 	// messages := make(chan string)
 	go hardware.ReadTemperatures(nil, quit)
-	devices.AllTemperatureControllers()
+	for _, controller := range devices.AllTemperatureControllers() {
+		if *autostartFlag {
+			continue
+		}
+		controller.Mode = "off"
+	}
 	go temperatureControllerRunner()
 
 	httpServerExitDone := &sync.WaitGroup{}
