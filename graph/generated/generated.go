@@ -73,7 +73,7 @@ type ComplexityRoot struct {
 		AssignProbe                          func(childComplexity int, name string, address string) int
 		DeleteTemperatureController          func(childComplexity int, id string) int
 		RemoveProbeFromTemperatureController func(childComplexity int, address string) int
-		UpdateTemperatureController          func(childComplexity int, id string, controllerSettings model.TemperatureControllerSettingsInput) int
+		UpdateTemperatureController          func(childComplexity int, controllerSettings model.TemperatureControllerSettingsInput) int
 	}
 
 	PidSettings struct {
@@ -133,7 +133,7 @@ type ManualSettingsResolver interface {
 type MutationResolver interface {
 	AssignProbe(ctx context.Context, name string, address string) (*devices.TemperatureController, error)
 	RemoveProbeFromTemperatureController(ctx context.Context, address string) (*devices.TemperatureController, error)
-	UpdateTemperatureController(ctx context.Context, id string, controllerSettings model.TemperatureControllerSettingsInput) (*devices.TemperatureController, error)
+	UpdateTemperatureController(ctx context.Context, controllerSettings model.TemperatureControllerSettingsInput) (*devices.TemperatureController, error)
 	DeleteTemperatureController(ctx context.Context, id string) (*model.DeleteTemperatureControllerReturnType, error)
 }
 type PidSettingsResolver interface {
@@ -289,7 +289,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateTemperatureController(childComplexity, args["id"].(string), args["controllerSettings"].(model.TemperatureControllerSettingsInput)), true
+		return e.complexity.Mutation.UpdateTemperatureController(childComplexity, args["controllerSettings"].(model.TemperatureControllerSettingsInput)), true
 
 	case "PidSettings.configured":
 		if e.complexity.PidSettings.Configured == nil {
@@ -647,7 +647,7 @@ type ManualSettings {
 type Mutation {
   assignProbe(name: String!, address: String!): TemperatureController
   removeProbeFromTemperatureController(address: String!): TemperatureController
-  updateTemperatureController(id: ID!, controllerSettings: TemperatureControllerSettingsInput!): TemperatureController
+  updateTemperatureController(controllerSettings: TemperatureControllerSettingsInput!): TemperatureController
   deleteTemperatureController(id: ID!): DeleteTemperatureControllerReturnType
 }
 
@@ -680,6 +680,9 @@ type PidSettings {
 
 """Used to configure a controller"""
 input TemperatureControllerSettingsInput {
+  """The controller Id"""
+  id: ID!
+
   """The name of the controller."""
   name: String
 
@@ -909,24 +912,15 @@ func (ec *executionContext) field_Mutation_removeProbeFromTemperatureController_
 func (ec *executionContext) field_Mutation_updateTemperatureController_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
-	var arg1 model.TemperatureControllerSettingsInput
+	var arg0 model.TemperatureControllerSettingsInput
 	if tmp, ok := rawArgs["controllerSettings"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("controllerSettings"))
-		arg1, err = ec.unmarshalNTemperatureControllerSettingsInput2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐTemperatureControllerSettingsInput(ctx, tmp)
+		arg0, err = ec.unmarshalNTemperatureControllerSettingsInput2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐTemperatureControllerSettingsInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["controllerSettings"] = arg1
+	args["controllerSettings"] = arg0
 	return args, nil
 }
 
@@ -1492,7 +1486,7 @@ func (ec *executionContext) _Mutation_updateTemperatureController(ctx context.Co
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateTemperatureController(rctx, args["id"].(string), args["controllerSettings"].(model.TemperatureControllerSettingsInput))
+		return ec.resolvers.Mutation().UpdateTemperatureController(rctx, args["controllerSettings"].(model.TemperatureControllerSettingsInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3911,6 +3905,14 @@ func (ec *executionContext) unmarshalInputTemperatureControllerSettingsInput(ctx
 
 	for k, v := range asMap {
 		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "name":
 			var err error
 

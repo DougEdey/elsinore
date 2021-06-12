@@ -44,6 +44,16 @@ func (op *OutPin) off() bool {
 		return false
 	}
 
+	if op.PinIO == nil {
+		log.Warn().Msgf("Resetting off %v", op.Identifier)
+		op.reset()
+	}
+
+	if op.PinIO == nil {
+		log.Warn().Msgf("Cannot turn off %v", op.Identifier)
+		return false
+	}
+
 	if op.offTime != nil && op.PinIO.Read() == gpio.Low {
 		return false
 	}
@@ -62,12 +72,32 @@ func (op *OutPin) on() bool {
 		return false
 	}
 
+	if op.PinIO == nil {
+		log.Warn().Msgf("Rsetting on %v", op.Identifier)
+		op.reset()
+	}
+
+	if op.PinIO == nil {
+		log.Warn().Msgf("Cannot turn on %v", op.Identifier)
+		return false
+	}
+
 	if op.onTime != nil && op.PinIO.Read() == gpio.High {
 		return false
 	}
 
 	if err := op.PinIO.Out(gpio.High); err != nil {
 		log.Fatal().Err(err).Msgf("Failed to set %v to High (on)", op.FriendlyName)
+	}
+
+	if op.PinIO.Read() != gpio.High {
+		log.Warn().Msg("Failed to turn pin on! resetting and trying again")
+		if err := op.PinIO.Out(gpio.High); err != nil {
+			log.Fatal().Err(err).Msgf("Failed to set %v to High (on)", op.FriendlyName)
+		}
+		if op.PinIO.Read() != gpio.High {
+			log.Warn().Msg("Failed to turn pin on!")
+		}
 	}
 	curTime := time.Now()
 	op.offTime = nil
@@ -77,6 +107,9 @@ func (op *OutPin) on() bool {
 
 func (op *OutPin) reset() {
 	if op.Identifier == "" {
+		if op != nil {
+			op.off()
+		}
 		return
 	}
 
@@ -86,16 +119,20 @@ func (op *OutPin) reset() {
 			log.Fatal().Msgf("No Pin for %v!\n", op.Identifier)
 		}
 	}
-
+	log.Warn().Msgf("Reset %v", op.Identifier)
 	op.off()
 }
 
 func (op *OutPin) update(identifier string) {
+	log.Warn().Msgf("Updating %v to %v", op.Identifier, identifier)
 	if identifier == "" {
 		op.reset()
 	} else if op.Identifier != identifier {
-		op.Identifier = identifier
+		log.Warn().Msgf("Updating identifier %v", identifier)
+		op.reset()
 		op.PinIO = nil
+		op.Identifier = identifier
+		op.reset()
 	}
 }
 
@@ -137,7 +174,6 @@ func (o *OutputControl) UpdateGpios(heatGpio string, coolGpio string) {
 // CalculateOutput - Turn on and off the output pin for this output control depending on the duty cycle
 func (o *OutputControl) CalculateOutput() {
 	cycleSeconds := math.Abs(float64(o.CycleTime*o.DutyCycle) / 100)
-
 	if o.DutyCycle == 0 {
 		o.HeatOutput.off()
 		o.CoolOutput.off()
@@ -153,21 +189,24 @@ func (o *OutputControl) CalculateOutput() {
 		}
 	} else if o.DutyCycle > 0 {
 		o.CoolOutput.off()
-
 		if o.HeatOutput.onTime != nil {
 			// it's on, do we need to turn it off?
 			changedAt := time.Since(*o.HeatOutput.onTime)
 			if changedAt.Seconds() > float64(cycleSeconds) {
-				log.Info().Msgf("Heat output (%v) turning off after %v seconds\n", o.HeatOutput.FriendlyName, changedAt.Seconds())
+				log.Info().Msgf("Heat output (%v) turning off after %v seconds", o.HeatOutput.FriendlyName, changedAt.Seconds())
 				o.HeatOutput.off()
 			}
 		} else if o.HeatOutput.offTime != nil {
 			// it's off, do we need to turn it on?
-			changeAt := time.Since(*o.HeatOutput.offTime)
+			changedAt := time.Since(*o.HeatOutput.offTime)
 			offSeconds := float64(o.CycleTime) - cycleSeconds
-			if changeAt.Seconds() >= offSeconds {
+			if changedAt.Seconds() >= offSeconds {
+				log.Info().Msgf("Heat output (%v) turning on after %v seconds", o.HeatOutput.FriendlyName, changedAt.Seconds())
 				o.HeatOutput.on()
 			}
+		} else {
+			log.Info().Msgf("Heat output has no on or off time! %v", o.HeatOutput.Identifier)
+			o.HeatOutput.off()
 		}
 	} else if o.DutyCycle < 0 {
 		o.HeatOutput.off()

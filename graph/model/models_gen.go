@@ -62,6 +62,8 @@ type TempProbeDetails struct {
 
 // Used to configure a controller
 type TemperatureControllerSettingsInput struct {
+	// The controller Id
+	ID string `json:"id"`
 	// The name of the controller.
 	Name *string `json:"name"`
 	// The new mode for the controller
