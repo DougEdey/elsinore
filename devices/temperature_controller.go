@@ -353,8 +353,8 @@ func (c *TemperatureController) Calculate(averageTemperature physic.Temperature,
 	c.PreviousCalculationTime = calculationTime
 	if output > 100 {
 		output = 100
-	} else if output < 0 {
-		output = 0
+	} else if output < -100 {
+		output = -100
 	}
 	return int64(output)
 }
