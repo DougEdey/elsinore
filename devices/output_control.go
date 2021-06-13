@@ -124,7 +124,6 @@ func (op *OutPin) reset() {
 }
 
 func (op *OutPin) update(identifier string) {
-	log.Warn().Msgf("Updating %v to %v", op.Identifier, identifier)
 	if identifier == "" {
 		op.reset()
 	} else if op.Identifier != identifier {
