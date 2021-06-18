@@ -90,7 +90,7 @@ type ComplexityRoot struct {
 	Query struct {
 		FetchProbes            func(childComplexity int, addresses []*string) int
 		Probe                  func(childComplexity int, address *string) int
-		ProbeList              func(childComplexity int) int
+		ProbeList              func(childComplexity int, available *bool) int
 		TemperatureControllers func(childComplexity int, name *string) int
 	}
 
@@ -141,7 +141,7 @@ type PidSettingsResolver interface {
 }
 type QueryResolver interface {
 	Probe(ctx context.Context, address *string) (*model.TemperatureProbe, error)
-	ProbeList(ctx context.Context) ([]*model.TemperatureProbe, error)
+	ProbeList(ctx context.Context, available *bool) ([]*model.TemperatureProbe, error)
 	FetchProbes(ctx context.Context, addresses []*string) ([]*model.TemperatureProbe, error)
 	TemperatureControllers(ctx context.Context, name *string) ([]*devices.TemperatureController, error)
 }
@@ -376,7 +376,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.ProbeList(childComplexity), true
+		args, err := ec.field_Query_probeList_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ProbeList(childComplexity, args["available"].(*bool)), true
 
 	case "Query.temperatureControllers":
 		if e.complexity.Query.TemperatureControllers == nil {
@@ -709,7 +714,7 @@ type Query {
   probe(address: String): TemperatureProbe
 
   """Get the list of probes"""
-  probeList: [TemperatureProbe]
+  probeList(available: Boolean): [TemperatureProbe]
 
   """Get a specific list of probes"""
   fetchProbes(addresses: [String]): [TemperatureProbe]
@@ -951,6 +956,21 @@ func (ec *executionContext) field_Query_fetchProbes_args(ctx context.Context, ra
 		}
 	}
 	args["addresses"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_probeList_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *bool
+	if tmp, ok := rawArgs["available"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("available"))
+		arg0, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["available"] = arg0
 	return args, nil
 }
 
@@ -1853,9 +1873,16 @@ func (ec *executionContext) _Query_probeList(ctx context.Context, field graphql.
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_probeList_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ProbeList(rctx)
+		return ec.resolvers.Query().ProbeList(rctx, args["available"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
