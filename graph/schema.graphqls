@@ -113,7 +113,7 @@ type Query {
   probe(address: String): TemperatureProbe
 
   """Get the list of probes"""
-  probeList: [TemperatureProbe]
+  probeList(available: Boolean): [TemperatureProbe]
 
   """Get a specific list of probes"""
   fetchProbes(addresses: [String]): [TemperatureProbe]

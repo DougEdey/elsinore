@@ -73,9 +73,12 @@ func (r *queryResolver) Probe(ctx context.Context, address *string) (*model.Temp
 	return nil, fmt.Errorf("no device found for address %v", *address)
 }
 
-func (r *queryResolver) ProbeList(ctx context.Context) ([]*model.TemperatureProbe, error) {
+func (r *queryResolver) ProbeList(ctx context.Context, available *bool) ([]*model.TemperatureProbe, error) {
 	probeList := []*model.TemperatureProbe{}
 	for _, device := range hardware.GetProbes() {
+		if available != nil && *available && devices.FindTemperatureControllerForProbe(device.PhysAddr) != nil {
+			continue
+		}
 		reading := device.Reading()
 		probeList = append(probeList, &model.TemperatureProbe{PhysAddr: &device.PhysAddr, Reading: &reading, Updated: &device.Updated})
 	}
