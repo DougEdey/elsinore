@@ -536,3 +536,79 @@ func TestDeleteTemperatureControllerMutations(t *testing.T) {
 		require.Equal(t, 1, len(deleteResp.DeleteTemperatureController.TemperatureProbes))
 	})
 }
+
+func TestSystemSettings(t *testing.T) {
+	setupTestDb(t)
+	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}})))
+
+	var settingsResp struct {
+		Settings struct {
+			BreweryName string
+		}
+		Errors []struct {
+			Message   string
+			Locations []struct {
+				Line   int
+				Column int
+			}
+		}
+	}
+
+	var updateSettingsResp struct {
+		UpdateSettings struct {
+			BreweryName string
+		}
+		Errors []struct {
+			Message   string
+			Locations []struct {
+				Line   int
+				Column int
+			}
+		}
+	}
+
+	t.Run("Name defaults to empty", func(t *testing.T) {
+		c.MustPost(`
+					query {
+						settings {
+							breweryName
+						}
+					}
+				`, &settingsResp)
+
+		require.Equal(t,
+			``,
+			settingsResp.Settings.BreweryName,
+		)
+	})
+
+	t.Run("Name can be updated", func(t *testing.T) {
+		c.MustPost(`
+					mutation {
+						updateSettings(settings: {breweryName: "Some Name"}) {
+							breweryName
+						}
+					}
+				`, &updateSettingsResp)
+
+		require.Equal(t,
+			`Some Name`,
+			updateSettingsResp.UpdateSettings.BreweryName,
+		)
+	})
+
+	t.Run("No Name does not change anything", func(t *testing.T) {
+		c.MustPost(`
+					mutation {
+						updateSettings(settings: {}) {
+							breweryName
+						}
+					}
+				`, &updateSettingsResp)
+
+		require.Equal(t,
+			`Some Name`,
+			updateSettingsResp.UpdateSettings.BreweryName,
+		)
+	})
+}

@@ -53,6 +53,9 @@ type Mutation {
   removeProbeFromTemperatureController(address: String!): TemperatureController
   updateTemperatureController(controllerSettings: TemperatureControllerSettingsInput!): TemperatureController
   deleteTemperatureController(id: ID!): DeleteTemperatureControllerReturnType
+  
+  """Update the current system settings"""
+  updateSettings(settings: SettingsInput!): Settings
 }
 
 """The settings for heating or cooling on a temperature controller"""
@@ -120,6 +123,9 @@ type Query {
 
   """Fetch all the temperature controllers, or a subset by name"""
   temperatureControllers(name: String): [TemperatureController]
+
+  """Fetch the current System Settings"""
+  settings: Settings
 }
 
 type TemperatureController {
@@ -250,4 +256,16 @@ type DeleteTemperatureControllerReturnType {
   id: ID!
   """Temperatures Probes that were associated with this controller"""
   temperatureProbes: [String]
+}
+
+"""The overall settings for this brewery"""
+type Settings {
+  """The current brewery name"""
+  breweryName: String!
+}
+
+"""The new settings for this brewery"""
+input SettingsInput {
+  """The new brewery name (blank for no change)"""
+  breweryName: String
 }

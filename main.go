@@ -16,6 +16,7 @@ import (
 	"github.com/dougedey/elsinore/graph"
 	"github.com/dougedey/elsinore/graph/generated"
 	"github.com/dougedey/elsinore/hardware"
+	"github.com/dougedey/elsinore/system"
 	"github.com/go-chi/chi"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog"
@@ -50,8 +51,14 @@ func main() {
 
 	database.InitDatabase(dbName,
 		&devices.TempProbeDetail{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
-		&devices.ManualSettings{}, &devices.TemperatureController{},
+		&devices.ManualSettings{}, &devices.TemperatureController{}, &system.Settings{},
 	)
+
+	if system.CurrentSettings().BreweryName == "" {
+		system.CurrentSettings().BreweryName = "Elsinore"
+		system.CurrentSettings().Save()
+	}
+	log.Printf("Starting %v", system.CurrentSettings().BreweryName)
 
 	_, err := host.Init()
 	if err != nil {

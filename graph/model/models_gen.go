@@ -46,6 +46,12 @@ type PidSettingsInput struct {
 	Gpio *string `json:"gpio"`
 }
 
+// The new settings for this brewery
+type SettingsInput struct {
+	// The new brewery name (blank for no change)
+	BreweryName *string `json:"breweryName"`
+}
+
 // A device that reads a temperature and is assigned to a temperature controller
 type TempProbeDetails struct {
 	// The ID of an object
