@@ -37,6 +37,7 @@ struct_tag: json
 autobind:
   - "github.com/dougedey/elsinore/graph/model"
   - "github.com/dougedey/elsinore/devices"
+  - "github.com/dougedey/elsinore/system"
 
 # This section declares type mapping between the GraphQL and go type systems
 #

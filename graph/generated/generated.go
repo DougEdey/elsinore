@@ -15,6 +15,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/introspection"
 	"github.com/dougedey/elsinore/devices"
 	"github.com/dougedey/elsinore/graph/model"
+	"github.com/dougedey/elsinore/system"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -73,6 +74,7 @@ type ComplexityRoot struct {
 		AssignProbe                          func(childComplexity int, name string, address string) int
 		DeleteTemperatureController          func(childComplexity int, id string) int
 		RemoveProbeFromTemperatureController func(childComplexity int, address string) int
+		UpdateSettings                       func(childComplexity int, settings model.SettingsInput) int
 		UpdateTemperatureController          func(childComplexity int, controllerSettings model.TemperatureControllerSettingsInput) int
 	}
 
@@ -91,7 +93,12 @@ type ComplexityRoot struct {
 		FetchProbes            func(childComplexity int, addresses []*string) int
 		Probe                  func(childComplexity int, address *string) int
 		ProbeList              func(childComplexity int, available *bool) int
+		Settings               func(childComplexity int) int
 		TemperatureControllers func(childComplexity int, name *string) int
+	}
+
+	Settings struct {
+		BreweryName func(childComplexity int) int
 	}
 
 	TempProbeDetails struct {
@@ -135,6 +142,7 @@ type MutationResolver interface {
 	RemoveProbeFromTemperatureController(ctx context.Context, address string) (*devices.TemperatureController, error)
 	UpdateTemperatureController(ctx context.Context, controllerSettings model.TemperatureControllerSettingsInput) (*devices.TemperatureController, error)
 	DeleteTemperatureController(ctx context.Context, id string) (*model.DeleteTemperatureControllerReturnType, error)
+	UpdateSettings(ctx context.Context, settings model.SettingsInput) (*system.Settings, error)
 }
 type PidSettingsResolver interface {
 	ID(ctx context.Context, obj *devices.PidSettings) (string, error)
@@ -144,6 +152,7 @@ type QueryResolver interface {
 	ProbeList(ctx context.Context, available *bool) ([]*model.TemperatureProbe, error)
 	FetchProbes(ctx context.Context, addresses []*string) ([]*model.TemperatureProbe, error)
 	TemperatureControllers(ctx context.Context, name *string) ([]*devices.TemperatureController, error)
+	Settings(ctx context.Context) (*system.Settings, error)
 }
 type TemperatureControllerResolver interface {
 	ID(ctx context.Context, obj *devices.TemperatureController) (string, error)
@@ -279,6 +288,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RemoveProbeFromTemperatureController(childComplexity, args["address"].(string)), true
 
+	case "Mutation.updateSettings":
+		if e.complexity.Mutation.UpdateSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateSettings_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateSettings(childComplexity, args["settings"].(model.SettingsInput)), true
+
 	case "Mutation.updateTemperatureController":
 		if e.complexity.Mutation.UpdateTemperatureController == nil {
 			break
@@ -383,6 +404,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.ProbeList(childComplexity, args["available"].(*bool)), true
 
+	case "Query.settings":
+		if e.complexity.Query.Settings == nil {
+			break
+		}
+
+		return e.complexity.Query.Settings(childComplexity), true
+
 	case "Query.temperatureControllers":
 		if e.complexity.Query.TemperatureControllers == nil {
 			break
@@ -394,6 +422,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.TemperatureControllers(childComplexity, args["name"].(*string)), true
+
+	case "Settings.breweryName":
+		if e.complexity.Settings.BreweryName == nil {
+			break
+		}
+
+		return e.complexity.Settings.BreweryName(childComplexity), true
 
 	case "TempProbeDetails.id":
 		if e.complexity.TempProbeDetails.ID == nil {
@@ -654,6 +689,9 @@ type Mutation {
   removeProbeFromTemperatureController(address: String!): TemperatureController
   updateTemperatureController(controllerSettings: TemperatureControllerSettingsInput!): TemperatureController
   deleteTemperatureController(id: ID!): DeleteTemperatureControllerReturnType
+  
+  """Update the current system settings"""
+  updateSettings(settings: SettingsInput!): Settings
 }
 
 """The settings for heating or cooling on a temperature controller"""
@@ -721,6 +759,9 @@ type Query {
 
   """Fetch all the temperature controllers, or a subset by name"""
   temperatureControllers(name: String): [TemperatureController]
+
+  """Fetch the current System Settings"""
+  settings: Settings
 }
 
 type TemperatureController {
@@ -852,7 +893,18 @@ type DeleteTemperatureControllerReturnType {
   """Temperatures Probes that were associated with this controller"""
   temperatureProbes: [String]
 }
-`, BuiltIn: false},
+
+"""The overall settings for this brewery"""
+type Settings {
+  """The current brewery name"""
+  breweryName: String!
+}
+
+"""The new settings for this brewery"""
+input SettingsInput {
+  """The new brewery name (blank for no change)"""
+  breweryName: String
+}`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -911,6 +963,21 @@ func (ec *executionContext) field_Mutation_removeProbeFromTemperatureController_
 		}
 	}
 	args["address"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.SettingsInput
+	if tmp, ok := rawArgs["settings"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("settings"))
+		arg0, err = ec.unmarshalNSettingsInput2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐSettingsInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["settings"] = arg0
 	return args, nil
 }
 
@@ -1559,6 +1626,45 @@ func (ec *executionContext) _Mutation_deleteTemperatureController(ctx context.Co
 	return ec.marshalODeleteTemperatureControllerReturnType2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐDeleteTemperatureControllerReturnType(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_updateSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateSettings_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateSettings(rctx, args["settings"].(model.SettingsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*system.Settings)
+	fc.Result = res
+	return ec.marshalOSettings2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋsystemᚐSettings(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _PidSettings_configured(ctx context.Context, field graphql.CollectedField, obj *devices.PidSettings) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1974,6 +2080,38 @@ func (ec *executionContext) _Query_temperatureControllers(ctx context.Context, f
 	return ec.marshalOTemperatureController2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐTemperatureController(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_settings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Settings(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*system.Settings)
+	fc.Result = res
+	return ec.marshalOSettings2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋsystemᚐSettings(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2043,6 +2181,41 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	res := resTmp.(*introspection.Schema)
 	fc.Result = res
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Settings_breweryName(ctx context.Context, field graphql.CollectedField, obj *system.Settings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Settings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BreweryName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TempProbeDetails_id(ctx context.Context, field graphql.CollectedField, obj *model.TempProbeDetails) (ret graphql.Marshaler) {
@@ -3926,6 +4099,26 @@ func (ec *executionContext) unmarshalInputPidSettingsInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSettingsInput(ctx context.Context, obj interface{}) (model.SettingsInput, error) {
+	var it model.SettingsInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "breweryName":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("breweryName"))
+			it.BreweryName, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputTemperatureControllerSettingsInput(ctx context.Context, obj interface{}) (model.TemperatureControllerSettingsInput, error) {
 	var it model.TemperatureControllerSettingsInput
 	var asMap = obj.(map[string]interface{})
@@ -4148,6 +4341,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec._Mutation_updateTemperatureController(ctx, field)
 		case "deleteTemperatureController":
 			out.Values[i] = ec._Mutation_deleteTemperatureController(ctx, field)
+		case "updateSettings":
+			out.Values[i] = ec._Mutation_updateSettings(ctx, field)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4268,10 +4463,48 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_temperatureControllers(ctx, field)
 				return res
 			})
+		case "settings":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_settings(ctx, field)
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
 			out.Values[i] = ec._Query___schema(ctx, field)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var settingsImplementors = []string{"Settings"}
+
+func (ec *executionContext) _Settings(ctx context.Context, sel ast.SelectionSet, obj *system.Settings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, settingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Settings")
+		case "breweryName":
+			out.Values[i] = ec._Settings_breweryName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4688,6 +4921,11 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 	return res
 }
 
+func (ec *executionContext) unmarshalNSettingsInput2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐSettingsInput(ctx context.Context, v interface{}) (model.SettingsInput, error) {
+	res, err := ec.unmarshalInputSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -5076,6 +5314,13 @@ func (ec *executionContext) unmarshalOPidSettingsInput2ᚖgithubᚗcomᚋdougede
 	}
 	res, err := ec.unmarshalInputPidSettingsInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSettings2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋsystemᚐSettings(ctx context.Context, sel ast.SelectionSet, v *system.Settings) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Settings(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

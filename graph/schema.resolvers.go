@@ -12,6 +12,7 @@ import (
 	"github.com/dougedey/elsinore/graph/generated"
 	"github.com/dougedey/elsinore/graph/model"
 	"github.com/dougedey/elsinore/hardware"
+	"github.com/dougedey/elsinore/system"
 )
 
 func (r *hysteriaSettingsResolver) ID(ctx context.Context, obj *devices.HysteriaSettings) (string, error) {
@@ -58,6 +59,13 @@ func (r *mutationResolver) DeleteTemperatureController(ctx context.Context, id s
 	}
 	controllerReturn := model.DeleteTemperatureControllerReturnType{ID: id, TemperatureProbes: probeList}
 	return &controllerReturn, nil
+}
+
+func (r *mutationResolver) UpdateSettings(ctx context.Context, settings model.SettingsInput) (*system.Settings, error) {
+	if settings.BreweryName != nil {
+		system.CurrentSettings().BreweryName = *settings.BreweryName
+	}
+	return system.CurrentSettings(), nil
 }
 
 func (r *pidSettingsResolver) ID(ctx context.Context, obj *devices.PidSettings) (string, error) {
@@ -115,6 +123,10 @@ func (r *queryResolver) TemperatureControllers(ctx context.Context, name *string
 		return nil, fmt.Errorf("no controller could be found for %v", *name)
 	}
 	return []*devices.TemperatureController{controller}, nil
+}
+
+func (r *queryResolver) Settings(ctx context.Context) (*system.Settings, error) {
+	return system.CurrentSettings(), nil
 }
 
 func (r *temperatureControllerResolver) ID(ctx context.Context, obj *devices.TemperatureController) (string, error) {
