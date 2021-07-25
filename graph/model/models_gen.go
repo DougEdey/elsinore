@@ -3,6 +3,9 @@
 package model
 
 import (
+	"fmt"
+	"io"
+	"strconv"
 	"time"
 )
 
@@ -52,6 +55,15 @@ type SettingsInput struct {
 	BreweryName *string `json:"breweryName"`
 }
 
+type SwitchSettingsInput struct {
+	// The Id of the switch, if no ID, create a new switch
+	ID *string `json:"id"`
+	// The new Name for the switch (required during switch creation)
+	Name *string `json:"name"`
+	// The new GPIO for the switch (required during switch creation)
+	Gpio *string `json:"gpio"`
+}
+
 // A device that reads a temperature and is assigned to a temperature controller
 type TempProbeDetails struct {
 	// The ID of an object
@@ -94,4 +106,45 @@ type TemperatureProbe struct {
 	Reading *string `json:"reading"`
 	// The time that this reading was updated
 	Updated *time.Time `json:"updated"`
+}
+
+type SwitchMode string
+
+const (
+	SwitchModeOn  SwitchMode = "on"
+	SwitchModeOff SwitchMode = "off"
+)
+
+var AllSwitchMode = []SwitchMode{
+	SwitchModeOn,
+	SwitchModeOff,
+}
+
+func (e SwitchMode) IsValid() bool {
+	switch e {
+	case SwitchModeOn, SwitchModeOff:
+		return true
+	}
+	return false
+}
+
+func (e SwitchMode) String() string {
+	return string(e)
+}
+
+func (e *SwitchMode) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SwitchMode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SwitchMode", str)
+	}
+	return nil
+}
+
+func (e SwitchMode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }

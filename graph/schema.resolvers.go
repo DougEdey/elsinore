@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/dougedey/elsinore/devices"
 	"github.com/dougedey/elsinore/graph/generated"
@@ -66,6 +67,51 @@ func (r *mutationResolver) UpdateSettings(ctx context.Context, settings model.Se
 		system.CurrentSettings().BreweryName = *settings.BreweryName
 	}
 	return system.CurrentSettings(), nil
+}
+
+func (r *mutationResolver) ModifySwitch(ctx context.Context, switchSettings model.SwitchSettingsInput) (*devices.Switch, error) {
+	var curSwitch *devices.Switch
+	if switchSettings.ID == nil {
+		errors := []string{}
+		if switchSettings.Gpio == nil || len(strings.TrimSpace(*switchSettings.Gpio)) == 0 {
+			errors = append(errors, "GPIO is required when creating a new switch")
+		}
+		if switchSettings.Name == nil || len(strings.TrimSpace(*switchSettings.Name)) == 0 {
+			errors = append(errors, "Name is required when creating a new switch")
+		}
+		if len(errors) > 0 {
+			return nil, fmt.Errorf(strings.Join(errors, "\n"))
+		}
+		newSwitch, err := devices.CreateSwitch(*switchSettings.Gpio, *switchSettings.Name)
+		if err != nil {
+			return nil, err
+		}
+		curSwitch = newSwitch
+	} else {
+		curSwitch = devices.FindSwitchByID(*switchSettings.ID)
+		if curSwitch == nil {
+			return nil, fmt.Errorf("no switch with id: %v found", *switchSettings.ID)
+		}
+	}
+
+	if switchSettings.Name != nil {
+		curSwitch.Output.FriendlyName = *switchSettings.Name
+	}
+	if switchSettings.Gpio != nil {
+		curSwitch.Output.Identifier = *switchSettings.Gpio
+		curSwitch.Reset()
+	}
+	return curSwitch, nil
+}
+
+func (r *mutationResolver) ToggleSwitch(ctx context.Context, id string, mode model.SwitchMode) (*devices.Switch, error) {
+	s := devices.FindSwitchByID(id)
+	if strings.EqualFold("on", mode.String()) {
+		s.On()
+	} else {
+		s.Off()
+	}
+	return s, nil
 }
 
 func (r *pidSettingsResolver) ID(ctx context.Context, obj *devices.PidSettings) (string, error) {
@@ -129,6 +175,14 @@ func (r *queryResolver) Settings(ctx context.Context) (*system.Settings, error) 
 	return system.CurrentSettings(), nil
 }
 
+func (r *queryResolver) Switches(ctx context.Context) ([]*devices.Switch, error) {
+	return devices.AllSwitches(), nil
+}
+
+func (r *switchResolver) ID(ctx context.Context, obj *devices.Switch) (string, error) {
+	return strconv.FormatUint(uint64(obj.ID), 10), nil
+}
+
 func (r *temperatureControllerResolver) ID(ctx context.Context, obj *devices.TemperatureController) (string, error) {
 	return strconv.FormatUint(uint64(obj.ID), 10), nil
 }
@@ -162,6 +216,9 @@ func (r *Resolver) PidSettings() generated.PidSettingsResolver { return &pidSett
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
+// Switch returns generated.SwitchResolver implementation.
+func (r *Resolver) Switch() generated.SwitchResolver { return &switchResolver{r} }
+
 // TemperatureController returns generated.TemperatureControllerResolver implementation.
 func (r *Resolver) TemperatureController() generated.TemperatureControllerResolver {
 	return &temperatureControllerResolver{r}
@@ -172,4 +229,5 @@ type manualSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type pidSettingsResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type switchResolver struct{ *Resolver }
 type temperatureControllerResolver struct{ *Resolver }

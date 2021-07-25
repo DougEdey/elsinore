@@ -43,6 +43,7 @@ type ResolverRoot interface {
 	Mutation() MutationResolver
 	PidSettings() PidSettingsResolver
 	Query() QueryResolver
+	Switch() SwitchResolver
 	TemperatureController() TemperatureControllerResolver
 }
 
@@ -73,7 +74,9 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AssignProbe                          func(childComplexity int, name string, address string) int
 		DeleteTemperatureController          func(childComplexity int, id string) int
+		ModifySwitch                         func(childComplexity int, switchSettings model.SwitchSettingsInput) int
 		RemoveProbeFromTemperatureController func(childComplexity int, address string) int
+		ToggleSwitch                         func(childComplexity int, id string, mode model.SwitchMode) int
 		UpdateSettings                       func(childComplexity int, settings model.SettingsInput) int
 		UpdateTemperatureController          func(childComplexity int, controllerSettings model.TemperatureControllerSettingsInput) int
 	}
@@ -94,11 +97,19 @@ type ComplexityRoot struct {
 		Probe                  func(childComplexity int, address *string) int
 		ProbeList              func(childComplexity int, available *bool) int
 		Settings               func(childComplexity int) int
+		Switches               func(childComplexity int) int
 		TemperatureControllers func(childComplexity int, name *string) int
 	}
 
 	Settings struct {
 		BreweryName func(childComplexity int) int
+	}
+
+	Switch struct {
+		Gpio  func(childComplexity int) int
+		ID    func(childComplexity int) int
+		Name  func(childComplexity int) int
+		State func(childComplexity int) int
 	}
 
 	TempProbeDetails struct {
@@ -143,6 +154,8 @@ type MutationResolver interface {
 	UpdateTemperatureController(ctx context.Context, controllerSettings model.TemperatureControllerSettingsInput) (*devices.TemperatureController, error)
 	DeleteTemperatureController(ctx context.Context, id string) (*model.DeleteTemperatureControllerReturnType, error)
 	UpdateSettings(ctx context.Context, settings model.SettingsInput) (*system.Settings, error)
+	ModifySwitch(ctx context.Context, switchSettings model.SwitchSettingsInput) (*devices.Switch, error)
+	ToggleSwitch(ctx context.Context, id string, mode model.SwitchMode) (*devices.Switch, error)
 }
 type PidSettingsResolver interface {
 	ID(ctx context.Context, obj *devices.PidSettings) (string, error)
@@ -153,6 +166,10 @@ type QueryResolver interface {
 	FetchProbes(ctx context.Context, addresses []*string) ([]*model.TemperatureProbe, error)
 	TemperatureControllers(ctx context.Context, name *string) ([]*devices.TemperatureController, error)
 	Settings(ctx context.Context) (*system.Settings, error)
+	Switches(ctx context.Context) ([]*devices.Switch, error)
+}
+type SwitchResolver interface {
+	ID(ctx context.Context, obj *devices.Switch) (string, error)
 }
 type TemperatureControllerResolver interface {
 	ID(ctx context.Context, obj *devices.TemperatureController) (string, error)
@@ -276,6 +293,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.DeleteTemperatureController(childComplexity, args["id"].(string)), true
 
+	case "Mutation.modifySwitch":
+		if e.complexity.Mutation.ModifySwitch == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_modifySwitch_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ModifySwitch(childComplexity, args["switchSettings"].(model.SwitchSettingsInput)), true
+
 	case "Mutation.removeProbeFromTemperatureController":
 		if e.complexity.Mutation.RemoveProbeFromTemperatureController == nil {
 			break
@@ -287,6 +316,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemoveProbeFromTemperatureController(childComplexity, args["address"].(string)), true
+
+	case "Mutation.toggleSwitch":
+		if e.complexity.Mutation.ToggleSwitch == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_toggleSwitch_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ToggleSwitch(childComplexity, args["id"].(string), args["mode"].(model.SwitchMode)), true
 
 	case "Mutation.updateSettings":
 		if e.complexity.Mutation.UpdateSettings == nil {
@@ -411,6 +452,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Settings(childComplexity), true
 
+	case "Query.switches":
+		if e.complexity.Query.Switches == nil {
+			break
+		}
+
+		return e.complexity.Query.Switches(childComplexity), true
+
 	case "Query.temperatureControllers":
 		if e.complexity.Query.TemperatureControllers == nil {
 			break
@@ -429,6 +477,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Settings.BreweryName(childComplexity), true
+
+	case "Switch.gpio":
+		if e.complexity.Switch.Gpio == nil {
+			break
+		}
+
+		return e.complexity.Switch.Gpio(childComplexity), true
+
+	case "Switch.id":
+		if e.complexity.Switch.ID == nil {
+			break
+		}
+
+		return e.complexity.Switch.ID(childComplexity), true
+
+	case "Switch.name":
+		if e.complexity.Switch.Name == nil {
+			break
+		}
+
+		return e.complexity.Switch.Name(childComplexity), true
+
+	case "Switch.state":
+		if e.complexity.Switch.State == nil {
+			break
+		}
+
+		return e.complexity.Switch.State(childComplexity), true
 
 	case "TempProbeDetails.id":
 		if e.complexity.TempProbeDetails.ID == nil {
@@ -649,6 +725,11 @@ enum ControllerMode {
   hysteria
 }
 
+enum SwitchMode {
+  on
+  off
+}
+
 scalar Time
 
 """The settings for hysteria mode"""
@@ -692,6 +773,16 @@ type Mutation {
   
   """Update the current system settings"""
   updateSettings(settings: SettingsInput!): Settings
+
+  """
+  Create or update a switch
+  """
+  modifySwitch(switchSettings: SwitchSettingsInput!): Switch
+  """
+  Enable or disable a switch
+  """
+  toggleSwitch(id: ID!, mode: SwitchMode!): Switch
+
 }
 
 """The settings for heating or cooling on a temperature controller"""
@@ -762,6 +853,9 @@ type Query {
 
   """Fetch the current System Settings"""
   settings: Settings
+
+  """Fetch switches that are configured"""
+  switches: [Switch]
 }
 
 type TemperatureController {
@@ -904,6 +998,32 @@ type Settings {
 input SettingsInput {
   """The new brewery name (blank for no change)"""
   breweryName: String
+}
+
+type Switch {
+  """The ID of the switch"""
+  id: ID!
+  """The GPIO for the pin"""
+  gpio: String!
+  """The name of the switch"""
+  name: String!
+  """The state of the switch"""
+  state: SwitchMode!
+}
+
+input SwitchSettingsInput {
+  """
+  The Id of the switch, if no ID, create a new switch
+  """
+  id: ID
+  """
+  The new Name for the switch (required during switch creation)
+  """
+  name: String
+  """
+  The new GPIO for the switch (required during switch creation)
+  """
+  gpio: String
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -951,6 +1071,21 @@ func (ec *executionContext) field_Mutation_deleteTemperatureController_args(ctx 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_modifySwitch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.SwitchSettingsInput
+	if tmp, ok := rawArgs["switchSettings"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("switchSettings"))
+		arg0, err = ec.unmarshalNSwitchSettingsInput2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐSwitchSettingsInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["switchSettings"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_removeProbeFromTemperatureController_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -963,6 +1098,30 @@ func (ec *executionContext) field_Mutation_removeProbeFromTemperatureController_
 		}
 	}
 	args["address"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_toggleSwitch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	var arg1 model.SwitchMode
+	if tmp, ok := rawArgs["mode"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mode"))
+		arg1, err = ec.unmarshalNSwitchMode2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐSwitchMode(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["mode"] = arg1
 	return args, nil
 }
 
@@ -1665,6 +1824,84 @@ func (ec *executionContext) _Mutation_updateSettings(ctx context.Context, field 
 	return ec.marshalOSettings2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋsystemᚐSettings(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_modifySwitch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_modifySwitch_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ModifySwitch(rctx, args["switchSettings"].(model.SwitchSettingsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*devices.Switch)
+	fc.Result = res
+	return ec.marshalOSwitch2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐSwitch(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_toggleSwitch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_toggleSwitch_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ToggleSwitch(rctx, args["id"].(string), args["mode"].(model.SwitchMode))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*devices.Switch)
+	fc.Result = res
+	return ec.marshalOSwitch2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐSwitch(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _PidSettings_configured(ctx context.Context, field graphql.CollectedField, obj *devices.PidSettings) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2112,6 +2349,38 @@ func (ec *executionContext) _Query_settings(ctx context.Context, field graphql.C
 	return ec.marshalOSettings2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋsystemᚐSettings(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_switches(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Switches(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*devices.Switch)
+	fc.Result = res
+	return ec.marshalOSwitch2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐSwitch(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2216,6 +2485,146 @@ func (ec *executionContext) _Settings_breweryName(ctx context.Context, field gra
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Switch_id(ctx context.Context, field graphql.CollectedField, obj *devices.Switch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Switch",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Switch().ID(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Switch_gpio(ctx context.Context, field graphql.CollectedField, obj *devices.Switch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Switch",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Gpio(), nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Switch_name(ctx context.Context, field graphql.CollectedField, obj *devices.Switch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Switch",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name(), nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Switch_state(ctx context.Context, field graphql.CollectedField, obj *devices.Switch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Switch",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.State(), nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.SwitchMode)
+	fc.Result = res
+	return ec.marshalNSwitchMode2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐSwitchMode(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TempProbeDetails_id(ctx context.Context, field graphql.CollectedField, obj *model.TempProbeDetails) (ret graphql.Marshaler) {
@@ -4119,6 +4528,42 @@ func (ec *executionContext) unmarshalInputSettingsInput(ctx context.Context, obj
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSwitchSettingsInput(ctx context.Context, obj interface{}) (model.SwitchSettingsInput, error) {
+	var it model.SwitchSettingsInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			it.Name, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "gpio":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gpio"))
+			it.Gpio, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputTemperatureControllerSettingsInput(ctx context.Context, obj interface{}) (model.TemperatureControllerSettingsInput, error) {
 	var it model.TemperatureControllerSettingsInput
 	var asMap = obj.(map[string]interface{})
@@ -4343,6 +4788,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec._Mutation_deleteTemperatureController(ctx, field)
 		case "updateSettings":
 			out.Values[i] = ec._Mutation_updateSettings(ctx, field)
+		case "modifySwitch":
+			out.Values[i] = ec._Mutation_modifySwitch(ctx, field)
+		case "toggleSwitch":
+			out.Values[i] = ec._Mutation_toggleSwitch(ctx, field)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4474,6 +4923,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_settings(ctx, field)
 				return res
 			})
+		case "switches":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_switches(ctx, field)
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -4504,6 +4964,57 @@ func (ec *executionContext) _Settings(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = ec._Settings_breweryName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var switchImplementors = []string{"Switch"}
+
+func (ec *executionContext) _Switch(ctx context.Context, sel ast.SelectionSet, obj *devices.Switch) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, switchImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Switch")
+		case "id":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Switch_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "gpio":
+			out.Values[i] = ec._Switch_gpio(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "name":
+			out.Values[i] = ec._Switch_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "state":
+			out.Values[i] = ec._Switch_state(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -4941,6 +5452,21 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	return res
 }
 
+func (ec *executionContext) unmarshalNSwitchMode2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐSwitchMode(ctx context.Context, v interface{}) (model.SwitchMode, error) {
+	var res model.SwitchMode
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSwitchMode2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐSwitchMode(ctx context.Context, sel ast.SelectionSet, v model.SwitchMode) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNSwitchSettingsInput2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐSwitchSettingsInput(ctx context.Context, v interface{}) (model.SwitchSettingsInput, error) {
+	res, err := ec.unmarshalInputSwitchSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNTemperatureControllerSettingsInput2githubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐTemperatureControllerSettingsInput(ctx context.Context, v interface{}) (model.TemperatureControllerSettingsInput, error) {
 	res, err := ec.unmarshalInputTemperatureControllerSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -5268,6 +5794,21 @@ func (ec *executionContext) unmarshalOHysteriaSettingsInput2ᚖgithubᚗcomᚋdo
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalID(*v)
+}
+
 func (ec *executionContext) unmarshalOInt2int64(ctx context.Context, v interface{}) (int64, error) {
 	res, err := graphql.UnmarshalInt64(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -5381,6 +5922,53 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return graphql.MarshalString(*v)
+}
+
+func (ec *executionContext) marshalOSwitch2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐSwitch(ctx context.Context, sel ast.SelectionSet, v []*devices.Switch) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOSwitch2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐSwitch(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalOSwitch2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐSwitch(ctx context.Context, sel ast.SelectionSet, v *devices.Switch) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Switch(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOTempProbeDetails2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐTempProbeDetails(ctx context.Context, sel ast.SelectionSet, v []*model.TempProbeDetails) graphql.Marshaler {

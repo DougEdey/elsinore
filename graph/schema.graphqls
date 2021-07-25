@@ -13,6 +13,11 @@ enum ControllerMode {
   hysteria
 }
 
+enum SwitchMode {
+  on
+  off
+}
+
 scalar Time
 
 """The settings for hysteria mode"""
@@ -56,6 +61,16 @@ type Mutation {
   
   """Update the current system settings"""
   updateSettings(settings: SettingsInput!): Settings
+
+  """
+  Create or update a switch
+  """
+  modifySwitch(switchSettings: SwitchSettingsInput!): Switch
+  """
+  Enable or disable a switch
+  """
+  toggleSwitch(id: ID!, mode: SwitchMode!): Switch
+
 }
 
 """The settings for heating or cooling on a temperature controller"""
@@ -126,6 +141,9 @@ type Query {
 
   """Fetch the current System Settings"""
   settings: Settings
+
+  """Fetch switches that are configured"""
+  switches: [Switch]
 }
 
 type TemperatureController {
@@ -268,4 +286,30 @@ type Settings {
 input SettingsInput {
   """The new brewery name (blank for no change)"""
   breweryName: String
+}
+
+type Switch {
+  """The ID of the switch"""
+  id: ID!
+  """The GPIO for the pin"""
+  gpio: String!
+  """The name of the switch"""
+  name: String!
+  """The state of the switch"""
+  state: SwitchMode!
+}
+
+input SwitchSettingsInput {
+  """
+  The Id of the switch, if no ID, create a new switch
+  """
+  id: ID
+  """
+  The new Name for the switch (required during switch creation)
+  """
+  name: String
+  """
+  The new GPIO for the switch (required during switch creation)
+  """
+  gpio: String
 }
