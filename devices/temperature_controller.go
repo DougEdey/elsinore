@@ -291,7 +291,10 @@ func (c *TemperatureController) RunControl() {
 	}
 
 	ticker := time.NewTicker(duration)
-	c.configureOutputControl()
+	err = c.configureOutputControl()
+	if err != nil {
+		log.Fatal().Err(err).Msgf("Failed to configure output control for %v", c.Name)
+	}
 
 	c.Running = true
 
