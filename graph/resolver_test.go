@@ -14,6 +14,8 @@ import (
 	"github.com/dougedey/elsinore/graph/model"
 	"github.com/dougedey/elsinore/hardware"
 	"github.com/stretchr/testify/require"
+	"periph.io/x/periph/conn/gpio/gpioreg"
+	"periph.io/x/periph/conn/gpio/gpiotest"
 	"periph.io/x/periph/conn/onewire"
 )
 
@@ -21,7 +23,7 @@ func setupTestDb(t *testing.T) {
 	dbName := "test"
 	database.InitDatabase(&dbName,
 		&devices.TempProbeDetail{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
-		&devices.ManualSettings{}, &devices.TemperatureController{},
+		&devices.ManualSettings{}, &devices.TemperatureController{}, &devices.Switch{},
 	)
 	devices.ClearControllers()
 
@@ -610,5 +612,245 @@ func TestSystemSettings(t *testing.T) {
 			`Some Name`,
 			updateSettingsResp.UpdateSettings.BreweryName,
 		)
+	})
+}
+
+func TestSwitches(t *testing.T) {
+	setupTestDb(t)
+	c := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}})))
+
+	var switchesListResp struct {
+		Switches []struct {
+			Id   string
+			Name string
+			Gpio string
+		}
+		Errors []struct {
+			Message   string
+			Locations []struct {
+				Line   int
+				Column int
+			}
+		}
+	}
+
+	var switchResp struct {
+		ModifySwitch struct {
+			Id    string
+			Name  string
+			Gpio  string
+			State string
+		}
+		Errors []struct {
+			Message   string
+			Locations []struct {
+				Line   int
+				Column int
+			}
+		}
+	}
+
+	t.Run(("Empty switch list is returned by default"), func(t *testing.T) {
+		c.MustPost(`
+			query {
+				switches {
+					id
+					name
+					gpio
+				}
+			}
+		`, &switchesListResp)
+
+		require.Empty(t, switchesListResp.Switches, "There should not be any switches configured")
+	})
+
+	gpioreg.Register(&gpiotest.Pin{N: "GPIO1", Num: 10, Fn: "I2C1_SDA"})
+	gpioreg.Register(&gpiotest.Pin{N: "GPIO2", Num: 11, Fn: "I2C1_SDC"})
+
+	t.Run("Can create a new switch", func(t *testing.T) {
+		c.MustPost(`
+			mutation {
+				modifySwitch(switchSettings: {name: "Test", gpio: "GPIO1"} ) {
+					id
+					name
+					gpio
+					state
+				}
+			}
+		`, &switchResp)
+
+		require.Empty(t, switchResp.Errors, "no Errors should be returned")
+		require.Equal(t, "Test", switchResp.ModifySwitch.Name)
+		require.Equal(t, "GPIO1", switchResp.ModifySwitch.Gpio)
+		require.Equal(t, "off", switchResp.ModifySwitch.State)
+	})
+
+	t.Run("Cannot create a new switch with a GPIO in use already", func(t *testing.T) {
+		err := c.Post(`
+			mutation {
+				modifySwitch(switchSettings: {name: "Test2", gpio: "GPIO1"} ) {
+					id
+					name
+					gpio
+				}
+			}
+		`, &switchResp)
+
+		require.NotNil(t, err)
+		require.Equal(t,
+			`[{"message":"GPIO 'GPIO1' is already in use","path":["modifySwitch"]}]`,
+			err.Error(),
+		)
+	})
+
+	t.Run("Cannot create a new switch with an existing name", func(t *testing.T) {
+		err := c.Post(`
+			mutation {
+				modifySwitch(switchSettings: {name: "Test", gpio: "GPIO2"} ) {
+					id
+					name
+					gpio
+				}
+			}
+		`, &switchResp)
+
+		require.NotNil(t, err)
+		require.Equal(t,
+			`[{"message":"switch 'Test' already exists","path":["modifySwitch"]}]`,
+			err.Error(),
+		)
+	})
+
+	t.Run(("The switch list is returned when switches are configured"), func(t *testing.T) {
+		c.MustPost(`
+			query {
+				switches {
+					id
+					name
+					gpio
+				}
+			}
+		`, &switchesListResp)
+
+		require.Len(t, switchesListResp.Switches, 1, "One switch should exist")
+	})
+
+	t.Run("Can update an existing switch", func(t *testing.T) {
+		c.MustPost(`
+			mutation {
+				modifySwitch(switchSettings: {id: 1, name: "TestUpdate", gpio: "GPIO2"} ) {
+					id
+					name
+					gpio
+				}
+			}
+		`, &switchResp)
+
+		require.Empty(t, switchResp.Errors, "no Errors should be returned")
+		require.Equal(t, "TestUpdate", switchResp.ModifySwitch.Name)
+		require.Equal(t, "GPIO2", switchResp.ModifySwitch.Gpio)
+	})
+
+	var toggleSwitchResp struct {
+		ToggleSwitch struct {
+			Id    string
+			Name  string
+			Gpio  string
+			State string
+		}
+		Errors []struct {
+			Message   string
+			Locations []struct {
+				Line   int
+				Column int
+			}
+		}
+	}
+
+	t.Run("Can turn a switch on", func(t *testing.T) {
+		c.MustPost(`
+			mutation {
+				toggleSwitch(id: 1, mode: on ) {
+					id
+					name
+					gpio
+					state
+				}
+			}
+		`, &toggleSwitchResp)
+
+		require.Empty(t, toggleSwitchResp.Errors, "no Errors should be returned")
+		require.Equal(t, "TestUpdate", toggleSwitchResp.ToggleSwitch.Name)
+		require.Equal(t, "GPIO2", toggleSwitchResp.ToggleSwitch.Gpio)
+		require.Equal(t, "on", toggleSwitchResp.ToggleSwitch.State)
+	})
+
+	t.Run("Can turn a switch off", func(t *testing.T) {
+		c.MustPost(`
+			mutation {
+				toggleSwitch(id: 1, mode: off ) {
+					id
+					name
+					gpio
+					state
+				}
+			}
+		`, &toggleSwitchResp)
+
+		require.Empty(t, toggleSwitchResp.Errors, "no Errors should be returned")
+		require.Equal(t, "TestUpdate", toggleSwitchResp.ToggleSwitch.Name)
+		require.Equal(t, "GPIO2", toggleSwitchResp.ToggleSwitch.Gpio)
+		require.Equal(t, "off", toggleSwitchResp.ToggleSwitch.State)
+	})
+
+	var deleteSwitchResp struct {
+		DeleteSwitch struct {
+			Id    string
+			Name  string
+			Gpio  string
+			State string
+		}
+		Errors []struct {
+			Message   string
+			Locations []struct {
+				Line   int
+				Column int
+			}
+		}
+	}
+	t.Run("Can delete a switch", func(t *testing.T) {
+		c.MustPost(`
+			mutation {
+				deleteSwitch(id: 1) {
+					id
+					name
+					gpio
+					state
+				}
+			}
+		`, &deleteSwitchResp)
+
+		require.Empty(t, toggleSwitchResp.Errors, "no Errors should be returned")
+		require.Equal(t, "1", deleteSwitchResp.DeleteSwitch.Id)
+		require.Equal(t, "TestUpdate", deleteSwitchResp.DeleteSwitch.Name)
+		require.Equal(t, "GPIO2", deleteSwitchResp.DeleteSwitch.Gpio)
+		require.Equal(t, "off", deleteSwitchResp.DeleteSwitch.State)
+	})
+
+	t.Run("Can reuse a deleted switches GPIO", func(t *testing.T) {
+		c.MustPost(`
+			mutation {
+				modifySwitch(switchSettings: {name: "Test2", gpio: "GPIO1"} ) {
+					id
+					name
+					gpio
+				}
+			}
+		`, &switchResp)
+
+		require.Empty(t, switchResp.Errors, "no Errors should be returned")
+		require.Equal(t, "Test2", switchResp.ModifySwitch.Name)
+		require.Equal(t, "GPIO1", switchResp.ModifySwitch.Gpio)
+		require.Equal(t, "off", switchResp.ModifySwitch.State)
 	})
 }

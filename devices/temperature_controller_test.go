@@ -18,7 +18,7 @@ func setupTestDb(t *testing.T) {
 	dbName := "test"
 	database.InitDatabase(&dbName,
 		&devices.TempProbeDetail{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
-		&devices.ManualSettings{}, &devices.TemperatureController{},
+		&devices.ManualSettings{}, &devices.TemperatureController{}, &devices.Switch{},
 	)
 
 	t.Cleanup(func() {

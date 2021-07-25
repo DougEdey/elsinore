@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -52,9 +53,10 @@ func main() {
 	database.InitDatabase(dbName,
 		&devices.TempProbeDetail{}, &devices.PidSettings{}, &devices.HysteriaSettings{},
 		&devices.ManualSettings{}, &devices.TemperatureController{}, &system.Settings{},
+		&devices.Switch{},
 	)
 
-	if system.CurrentSettings().BreweryName == "" {
+	if len(strings.TrimSpace(system.CurrentSettings().BreweryName)) == 0 {
 		system.CurrentSettings().BreweryName = "Elsinore"
 		system.CurrentSettings().Save()
 	}
@@ -76,6 +78,8 @@ func main() {
 		controller.Mode = "off"
 	}
 	go temperatureControllerRunner()
+
+	log.Printf("Loaded %v switches.", len(devices.AllSwitches()))
 
 	httpServerExitDone := &sync.WaitGroup{}
 

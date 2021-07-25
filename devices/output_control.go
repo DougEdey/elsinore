@@ -2,13 +2,13 @@ package devices
 
 import (
 	"context"
+	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
-	"periph.io/x/periph/conn/gpio"
-	"periph.io/x/periph/conn/gpio/gpioreg"
 )
 
 var contextDecl, cancelFunc = context.WithCancel(context.Background())
@@ -28,111 +28,10 @@ type OutputControl struct {
 	CycleTime  int64 `gorm:"-"`
 }
 
-// OutPin represents a stored output pin with a friendly name
-type OutPin struct {
-	gorm.Model
-
-	Identifier   string
-	FriendlyName string
-	PinIO        gpio.PinIO `gorm:"-"`
-	onTime       *time.Time
-	offTime      *time.Time
-}
-
-func (op *OutPin) off() bool {
-	if op == nil {
-		return false
-	}
-
-	if op.PinIO == nil {
-		log.Warn().Msgf("Resetting off %v", op.Identifier)
-		op.reset()
-	}
-
-	if op.PinIO == nil {
-		log.Warn().Msgf("Cannot turn off %v", op.Identifier)
-		return false
-	}
-
-	if op.offTime != nil && op.PinIO.Read() == gpio.Low {
-		return false
-	}
-
-	if err := op.PinIO.Out(gpio.Low); err != nil {
-		log.Fatal().Err(err).Msgf("Failed to set %v to Low (off)", op.FriendlyName)
-	}
-	curTime := time.Now()
-	op.offTime = &curTime
-	op.onTime = nil
-	return true
-}
-
-func (op *OutPin) on() bool {
-	if op == nil {
-		return false
-	}
-
-	if op.PinIO == nil {
-		log.Warn().Msgf("Rsetting on %v", op.Identifier)
-		op.reset()
-	}
-
-	if op.PinIO == nil {
-		log.Warn().Msgf("Cannot turn on %v", op.Identifier)
-		return false
-	}
-
-	if op.onTime != nil && op.PinIO.Read() == gpio.High {
-		return false
-	}
-
-	if err := op.PinIO.Out(gpio.High); err != nil {
-		log.Fatal().Err(err).Msgf("Failed to set %v to High (on)", op.FriendlyName)
-	}
-
-	if op.PinIO.Read() != gpio.High {
-		log.Warn().Msg("Failed to turn pin on! resetting and trying again")
-		if err := op.PinIO.Out(gpio.High); err != nil {
-			log.Fatal().Err(err).Msgf("Failed to set %v to High (on)", op.FriendlyName)
-		}
-		if op.PinIO.Read() != gpio.High {
-			log.Warn().Msg("Failed to turn pin on!")
-		}
-	}
-	curTime := time.Now()
-	op.offTime = nil
-	op.onTime = &curTime
-	return true
-}
-
-func (op *OutPin) reset() {
-	if op.Identifier == "" {
-		if op != nil {
-			op.off()
-		}
-		return
-	}
-
-	if op.PinIO == nil {
-		op.PinIO = gpioreg.ByName(op.Identifier)
-		if op.PinIO == nil {
-			log.Fatal().Msgf("No Pin for %v!\n", op.Identifier)
-		}
-	}
-	log.Warn().Msgf("Reset %v", op.Identifier)
-	op.off()
-}
-
-func (op *OutPin) update(identifier string) {
-	if identifier == "" {
-		op.reset()
-	} else if op.Identifier != identifier {
-		log.Warn().Msgf("Updating identifier %v", identifier)
-		op.reset()
-		op.PinIO = nil
-		op.Identifier = identifier
-		op.reset()
-	}
+// AfterDelete - After deleting a switch, remove the output pin
+func (o *OutputControl) AfterDelete(tx *gorm.DB) {
+	deleteOutpin(o.HeatOutput)
+	deleteOutpin(o.CoolOutput)
 }
 
 // Reset - Reset the output pins
@@ -141,33 +40,50 @@ func (o *OutputControl) Reset() {
 		return
 	}
 	if o.HeatOutput != nil {
-		o.HeatOutput.reset()
+		err := o.HeatOutput.reset()
+		if err != nil { log.Warn().Err(err) }
 	}
 	if o.CoolOutput != nil {
-		o.CoolOutput.reset()
+		err := o.CoolOutput.reset()
+		if err != nil { log.Warn().Err(err) }
 	}
 }
 
 // UpdateGpios - Update the heating and cooling outputs to their new pins
-func (o *OutputControl) UpdateGpios(heatGpio string, coolGpio string) {
+func (o *OutputControl) UpdateGpios(parentName string, heatGpio string, coolGpio string) error {
 	// update the heating pin
-	if o.HeatOutput == nil && heatGpio != "" {
-		o.HeatOutput = &OutPin{Identifier: heatGpio, FriendlyName: "Heating"}
+	emptyHeatGpio := len(strings.TrimSpace(heatGpio)) == 0
+	emptyCoolGpio := len(strings.TrimSpace(coolGpio)) == 0
+	if o.HeatOutput == nil && !emptyHeatGpio {
+		newPin, err := createOutpin(heatGpio, fmt.Sprintf("%v Heating", parentName))
+		if err != nil {
+			return err
+		}
+		o.HeatOutput = newPin
 	} else if o.HeatOutput != nil {
 		o.HeatOutput.update(heatGpio)
-		if heatGpio == "" {
+		if emptyHeatGpio {
+			err := o.HeatOutput.reset()
+			if err != nil { log.Warn().Err(err) }
 			o.HeatOutput = nil
 		}
 	}
 	// update the cooling pin
-	if o.CoolOutput == nil && coolGpio != "" {
-		o.CoolOutput = &OutPin{Identifier: coolGpio, FriendlyName: "Cooling"}
+	if o.CoolOutput == nil && !emptyCoolGpio {
+		newPin, err := createOutpin(coolGpio, fmt.Sprintf("%v Cooling", parentName))
+		if err != nil {
+			return err
+		}
+		o.CoolOutput = newPin
 	} else if o.CoolOutput != nil {
 		o.CoolOutput.update(coolGpio)
-		if coolGpio == "" {
+		if emptyCoolGpio {
+			err := o.CoolOutput.reset()
+			if err != nil { log.Warn().Err(err) }
 			o.CoolOutput = nil
 		}
 	}
+	return nil
 }
 
 // CalculateOutput - Turn on and off the output pin for this output control depending on the duty cycle
