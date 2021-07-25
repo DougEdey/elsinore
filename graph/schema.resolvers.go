@@ -104,6 +104,10 @@ func (r *mutationResolver) ModifySwitch(ctx context.Context, switchSettings mode
 	return curSwitch, nil
 }
 
+func (r *mutationResolver) DeleteSwitch(ctx context.Context, id string) (*devices.Switch, error) {
+	return devices.DeleteSwitchByID(id)
+}
+
 func (r *mutationResolver) ToggleSwitch(ctx context.Context, id string, mode model.SwitchMode) (*devices.Switch, error) {
 	s := devices.FindSwitchByID(id)
 	if strings.EqualFold("on", mode.String()) {

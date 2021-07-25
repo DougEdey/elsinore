@@ -66,20 +66,42 @@ func FindSwitchByID(id string) *Switch {
 	return existingSwitch
 }
 
+// AfterDelete - After deleting a switch, remove the output pin
+func (s *Switch) AfterDelete(tx *gorm.DB) {
+	deleteOutpin(s.Output)
+}
+
+// DeleteSwitchByID - Does what it says on the tin, clearing up the Outpin too
+func DeleteSwitchByID(id string) (*Switch, error) {
+	existingSwitch := FindSwitchByID(id)
+	if existingSwitch == nil {
+		return nil, fmt.Errorf("no switch found with id '%v'", id)
+	}
+	database.FetchDatabase().Debug().Delete(&existingSwitch)
+	for i, s := range switches {
+		if s == existingSwitch {
+			switches[i] = switches[len(switches)-1]
+			switches = switches[:len(switches)-1]
+			break
+		}
+	}
+	return existingSwitch, nil
+}
+
 // CreateSwitch - Create a new switch, checking for the GPIO/Name already existing
 func CreateSwitch(identifier string, friendlyName string) (*Switch, error) {
-	if GpioInUse(identifier) {
-		return nil, fmt.Errorf("GPIO '%v' is already in use", identifier)
-	}
 	for _, s := range switches {
 		if strings.EqualFold(s.Name(), friendlyName) {
 			return nil, fmt.Errorf("switch '%v' already exists", friendlyName)
 		}
 	}
 
-	newPin := OutPin{Identifier: identifier, FriendlyName: friendlyName}
-	newSwitch := Switch{Output: &newPin}
-	outpins = append(outpins, &newPin)
+	newPin, err := createOutpin(identifier, friendlyName)
+	if err != nil {
+		return nil, err
+	}
+
+	newSwitch := Switch{Output: newPin}
 	switches = append(switches, &newSwitch)
 	database.FetchDatabase().Debug().Save(&newSwitch)
 	return &newSwitch, nil

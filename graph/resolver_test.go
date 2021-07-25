@@ -802,4 +802,55 @@ func TestSwitches(t *testing.T) {
 		require.Equal(t, "GPIO2", toggleSwitchResp.ToggleSwitch.Gpio)
 		require.Equal(t, "off", toggleSwitchResp.ToggleSwitch.State)
 	})
+
+	var deleteSwitchResp struct {
+		DeleteSwitch struct {
+			Id    string
+			Name  string
+			Gpio  string
+			State string
+		}
+		Errors []struct {
+			Message   string
+			Locations []struct {
+				Line   int
+				Column int
+			}
+		}
+	}
+	t.Run("Can delete a switch", func(t *testing.T) {
+		c.MustPost(`
+			mutation {
+				deleteSwitch(id: 1) {
+					id
+					name
+					gpio
+					state
+				}
+			}
+		`, &deleteSwitchResp)
+
+		require.Empty(t, toggleSwitchResp.Errors, "no Errors should be returned")
+		require.Equal(t, "1", deleteSwitchResp.DeleteSwitch.Id)
+		require.Equal(t, "TestUpdate", deleteSwitchResp.DeleteSwitch.Name)
+		require.Equal(t, "GPIO2", deleteSwitchResp.DeleteSwitch.Gpio)
+		require.Equal(t, "off", deleteSwitchResp.DeleteSwitch.State)
+	})
+
+	t.Run("Can reuse a deleted switches GPIO", func(t *testing.T) {
+		c.MustPost(`
+			mutation {
+				modifySwitch(switchSettings: {name: "Test2", gpio: "GPIO1"} ) {
+					id
+					name
+					gpio
+				}
+			}
+		`, &switchResp)
+
+		require.Empty(t, switchResp.Errors, "no Errors should be returned")
+		require.Equal(t, "Test2", switchResp.ModifySwitch.Name)
+		require.Equal(t, "GPIO1", switchResp.ModifySwitch.Gpio)
+		require.Equal(t, "off", switchResp.ModifySwitch.State)
+	})
 }

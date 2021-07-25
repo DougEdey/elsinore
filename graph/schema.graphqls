@@ -67,10 +67,13 @@ type Mutation {
   """
   modifySwitch(switchSettings: SwitchSettingsInput!): Switch
   """
+  Delete a switch
+  """
+  deleteSwitch(id: ID!): Switch
+  """
   Enable or disable a switch
   """
   toggleSwitch(id: ID!, mode: SwitchMode!): Switch
-
 }
 
 """The settings for heating or cooling on a temperature controller"""

@@ -131,3 +131,26 @@ func GpioInUse(identifier string) bool {
 	}
 	return false
 }
+
+func deleteOutpin(outpin *OutPin) {
+	if outpin == nil {
+		return
+	}
+
+	for i, o := range outpins {
+		if o == outpin {
+			outpins[i] = outpins[len(outpins)-1]
+			outpins = outpins[:len(outpins)-1]
+			break
+		}
+	}
+}
+
+func createOutpin(identifier string, friendlyName string) (*OutPin, error) {
+	if GpioInUse(identifier) {
+		return nil, fmt.Errorf("GPIO '%v' is already in use", identifier)
+	}
+	newPin := &OutPin{Identifier: identifier, FriendlyName: friendlyName}
+	outpins = append(outpins, newPin)
+	return newPin, nil
+}

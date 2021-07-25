@@ -73,6 +73,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AssignProbe                          func(childComplexity int, name string, address string) int
+		DeleteSwitch                         func(childComplexity int, id string) int
 		DeleteTemperatureController          func(childComplexity int, id string) int
 		ModifySwitch                         func(childComplexity int, switchSettings model.SwitchSettingsInput) int
 		RemoveProbeFromTemperatureController func(childComplexity int, address string) int
@@ -155,6 +156,7 @@ type MutationResolver interface {
 	DeleteTemperatureController(ctx context.Context, id string) (*model.DeleteTemperatureControllerReturnType, error)
 	UpdateSettings(ctx context.Context, settings model.SettingsInput) (*system.Settings, error)
 	ModifySwitch(ctx context.Context, switchSettings model.SwitchSettingsInput) (*devices.Switch, error)
+	DeleteSwitch(ctx context.Context, id string) (*devices.Switch, error)
 	ToggleSwitch(ctx context.Context, id string, mode model.SwitchMode) (*devices.Switch, error)
 }
 type PidSettingsResolver interface {
@@ -280,6 +282,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.AssignProbe(childComplexity, args["name"].(string), args["address"].(string)), true
+
+	case "Mutation.deleteSwitch":
+		if e.complexity.Mutation.DeleteSwitch == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteSwitch_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteSwitch(childComplexity, args["id"].(string)), true
 
 	case "Mutation.deleteTemperatureController":
 		if e.complexity.Mutation.DeleteTemperatureController == nil {
@@ -779,10 +793,13 @@ type Mutation {
   """
   modifySwitch(switchSettings: SwitchSettingsInput!): Switch
   """
+  Delete a switch
+  """
+  deleteSwitch(id: ID!): Switch
+  """
   Enable or disable a switch
   """
   toggleSwitch(id: ID!, mode: SwitchMode!): Switch
-
 }
 
 """The settings for heating or cooling on a temperature controller"""
@@ -1053,6 +1070,21 @@ func (ec *executionContext) field_Mutation_assignProbe_args(ctx context.Context,
 		}
 	}
 	args["address"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteSwitch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -1850,6 +1882,45 @@ func (ec *executionContext) _Mutation_modifySwitch(ctx context.Context, field gr
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().ModifySwitch(rctx, args["switchSettings"].(model.SwitchSettingsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*devices.Switch)
+	fc.Result = res
+	return ec.marshalOSwitch2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋdevicesᚐSwitch(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_deleteSwitch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_deleteSwitch_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteSwitch(rctx, args["id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4790,6 +4861,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec._Mutation_updateSettings(ctx, field)
 		case "modifySwitch":
 			out.Values[i] = ec._Mutation_modifySwitch(ctx, field)
+		case "deleteSwitch":
+			out.Values[i] = ec._Mutation_deleteSwitch(ctx, field)
 		case "toggleSwitch":
 			out.Values[i] = ec._Mutation_toggleSwitch(ctx, field)
 		default:

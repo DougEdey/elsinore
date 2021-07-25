@@ -2,6 +2,7 @@ package devices
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -27,6 +28,12 @@ type OutputControl struct {
 	CycleTime  int64 `gorm:"-"`
 }
 
+// AfterDelete - After deleting a switch, remove the output pin
+func (o *OutputControl) AfterDelete(tx *gorm.DB) {
+	deleteOutpin(o.HeatOutput)
+	deleteOutpin(o.CoolOutput)
+}
+
 // Reset - Reset the output pins
 func (o *OutputControl) Reset() {
 	if o == nil {
@@ -41,13 +48,16 @@ func (o *OutputControl) Reset() {
 }
 
 // UpdateGpios - Update the heating and cooling outputs to their new pins
-func (o *OutputControl) UpdateGpios(heatGpio string, coolGpio string) {
+func (o *OutputControl) UpdateGpios(parentName string, heatGpio string, coolGpio string) error {
 	// update the heating pin
 	emptyHeatGpio := len(strings.TrimSpace(heatGpio)) == 0
 	emptyCoolGpio := len(strings.TrimSpace(coolGpio)) == 0
-
 	if o.HeatOutput == nil && !emptyHeatGpio {
-		o.HeatOutput = &OutPin{Identifier: heatGpio, FriendlyName: "Heating"}
+		newPin, err := createOutpin(heatGpio, fmt.Sprintf("%v Heating", parentName))
+		if err != nil {
+			return err
+		}
+		o.HeatOutput = newPin
 	} else if o.HeatOutput != nil {
 		o.HeatOutput.update(heatGpio)
 		if emptyHeatGpio {
@@ -57,7 +67,11 @@ func (o *OutputControl) UpdateGpios(heatGpio string, coolGpio string) {
 	}
 	// update the cooling pin
 	if o.CoolOutput == nil && !emptyCoolGpio {
-		o.CoolOutput = &OutPin{Identifier: coolGpio, FriendlyName: "Cooling"}
+		newPin, err := createOutpin(coolGpio, fmt.Sprintf("%v Cooling", parentName))
+		if err != nil {
+			return err
+		}
+		o.CoolOutput = newPin
 	} else if o.CoolOutput != nil {
 		o.CoolOutput.update(coolGpio)
 		if emptyCoolGpio {
@@ -65,6 +79,7 @@ func (o *OutputControl) UpdateGpios(heatGpio string, coolGpio string) {
 			o.CoolOutput = nil
 		}
 	}
+	return nil
 }
 
 // CalculateOutput - Turn on and off the output pin for this output control depending on the duty cycle

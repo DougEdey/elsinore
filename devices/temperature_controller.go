@@ -414,28 +414,34 @@ func (c *TemperatureController) ApplySettings(newSettings model.TemperatureContr
 	}
 	database.Save(c)
 
-	c.configureOutputControl()
-	return nil
+	return c.configureOutputControl()
 }
 
-func (c *TemperatureController) configureOutputControl() {
+func (c *TemperatureController) configureOutputControl() error {
 	log.Info().Msgf("Updated Output control, heat: %v, cool: %v", c.HeatSettings.Gpio, c.CoolSettings.Gpio)
 	if c.HeatSettings.Gpio != "" || c.CoolSettings.Gpio != "" {
 		if c.OutputControl == nil {
 			log.Info().Msg("Turning on output control")
 			outputControl := OutputControl{}
 			c.OutputControl = &outputControl
-			c.OutputControl.UpdateGpios(c.HeatSettings.Gpio, c.CoolSettings.Gpio)
+			err := c.OutputControl.UpdateGpios(c.Name, c.HeatSettings.Gpio, c.CoolSettings.Gpio)
+			if err != nil {
+				return err
+			}
 			c.quitOutputControl = make(chan struct{})
 			go c.OutputControl.RunControl(c.quitOutputControl)
 		} else {
-			c.OutputControl.UpdateGpios(c.HeatSettings.Gpio, c.CoolSettings.Gpio)
+			err := c.OutputControl.UpdateGpios(c.Name, c.HeatSettings.Gpio, c.CoolSettings.Gpio)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		log.Info().Msg("Turning off output control")
 		c.OutputControl.Reset()
 		c.OutputControl = nil
 	}
+	return nil
 }
 
 // ApplySettings - Update the current pid settings
