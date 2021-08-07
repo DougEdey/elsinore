@@ -41,11 +41,15 @@ func (o *OutputControl) Reset() {
 	}
 	if o.HeatOutput != nil {
 		err := o.HeatOutput.reset()
-		if err != nil { log.Warn().Err(err) }
+		if err != nil {
+			log.Warn().Err(err)
+		}
 	}
 	if o.CoolOutput != nil {
 		err := o.CoolOutput.reset()
-		if err != nil { log.Warn().Err(err) }
+		if err != nil {
+			log.Warn().Err(err)
+		}
 	}
 }
 
@@ -64,7 +68,9 @@ func (o *OutputControl) UpdateGpios(parentName string, heatGpio string, coolGpio
 		o.HeatOutput.update(heatGpio)
 		if emptyHeatGpio {
 			err := o.HeatOutput.reset()
-			if err != nil { log.Warn().Err(err) }
+			if err != nil {
+				log.Warn().Err(err)
+			}
 			o.HeatOutput = nil
 		}
 	}
@@ -79,7 +85,9 @@ func (o *OutputControl) UpdateGpios(parentName string, heatGpio string, coolGpio
 		o.CoolOutput.update(coolGpio)
 		if emptyCoolGpio {
 			err := o.CoolOutput.reset()
-			if err != nil { log.Warn().Err(err) }
+			if err != nil {
+				log.Warn().Err(err)
+			}
 			o.CoolOutput = nil
 		}
 	}

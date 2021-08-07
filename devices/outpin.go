@@ -32,7 +32,9 @@ func (op *OutPin) off() bool {
 	if op.PinIO == nil {
 		log.Warn().Msgf("Resetting off %v", op.Identifier)
 		err := op.reset()
-		if err != nil { return false }
+		if err != nil {
+			return false
+		}
 	}
 
 	if op.PinIO == nil {
@@ -61,7 +63,9 @@ func (op *OutPin) on() bool {
 	if op.PinIO == nil {
 		log.Warn().Msgf("Rsetting on %v", op.Identifier)
 		err := op.reset()
-		if err != nil { return false }
+		if err != nil {
+			return false
+		}
 	}
 
 	if op.PinIO == nil {
@@ -115,17 +119,23 @@ func (op *OutPin) reset() error {
 func (op *OutPin) update(identifier string) {
 	if len(strings.TrimSpace(identifier)) == 0 {
 		err := op.reset()
-		if err != nil { log.Warn().Err(err) }
+		if err != nil {
+			log.Warn().Err(err)
+		}
 	} else if op.Identifier != identifier {
 		log.Warn().Msgf("Updating identifier %v", identifier)
 		err := op.reset()
-		if err != nil { log.Warn().Err(err) }
+		if err != nil {
+			log.Warn().Err(err)
+		}
 
 		op.PinIO = nil
 		op.Identifier = identifier
-		
+
 		err = op.reset()
-		if err != nil { log.Warn().Err(err) }
+		if err != nil {
+			log.Warn().Err(err)
+		}
 	}
 }
 

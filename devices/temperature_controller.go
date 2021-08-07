@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dougedey/elsinore/database"
@@ -44,7 +45,7 @@ type TemperatureController struct {
 	Mode                    model.ControllerMode // Mode of this controller
 	DutyCycle               int64
 	CalculatedDuty          int64
-	SetPointRaw             physic.Temperature
+	SetPointRaw             *physic.Temperature
 	PreviousCalculationTime time.Time      `gorm:"-"`
 	TotalDiff               float64        `gorm:"-"` // Always in Fahrenheit (internal calculation)
 	integralError           float64        `gorm:"-"`
@@ -337,6 +338,10 @@ func (c *TemperatureController) Calculate(averageTemperature physic.Temperature,
 		return c.DutyCycle
 	}
 
+	if c.SetPointRaw == nil {
+		return c.DutyCycle
+	}
+
 	delta := calculationTime.Sub(c.PreviousCalculationTime)
 	// only caculate updates if we're over 100ms (0.1s)
 	if delta.Milliseconds() < 100 {
@@ -362,9 +367,26 @@ func (c *TemperatureController) Calculate(averageTemperature physic.Temperature,
 	return int64(output)
 }
 
-// SetPoint -> THe target Setpoint for this controller
+// SetPoint -> Te target Setpoint for this controller
 func (c *TemperatureController) SetPoint() string {
+	if c.SetPointRaw == nil {
+		return ""
+	}
 	return c.SetPointRaw.String()
+}
+
+// UpdateSetPoint -> Update the current set point value, empty string will clear the value
+func (c *TemperatureController) UpdateSetPoint(newValue string) error {
+	if len(strings.TrimSpace(newValue)) == 0 {
+		c.SetPointRaw = nil
+		return nil
+	}
+
+	if c.SetPointRaw == nil {
+		newTemp := physic.Temperature(0)
+		c.SetPointRaw = &newTemp
+	}
+	return c.SetPointRaw.Set(strings.ToUpper(newValue))
 }
 
 // MaxTemp -> For hysteria, this is the string for the max temp to turn off
@@ -410,8 +432,9 @@ func (c *TemperatureController) ApplySettings(newSettings model.TemperatureContr
 	}
 
 	if newSettings.SetPoint != nil {
-		err := c.SetPointRaw.Set(*newSettings.SetPoint)
+		err := c.UpdateSetPoint(*newSettings.SetPoint)
 		if err != nil {
+			log.Info().Msgf("Failed to parse %v", *newSettings.SetPoint)
 			return err
 		}
 	}
