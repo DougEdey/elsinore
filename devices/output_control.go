@@ -97,7 +97,7 @@ func (o *OutputControl) UpdateGpios(parentName string, heatGpio string, coolGpio
 // CalculateOutput - Turn on and off the output pin for this output control depending on the duty cycle
 func (o *OutputControl) CalculateOutput() {
 	cycleSeconds := math.Abs(float64(o.CycleTime*o.DutyCycle) / 100)
-	if o.DutyCycle == 0 {
+	if cycleSeconds == 0 {
 		o.HeatOutput.off()
 		o.CoolOutput.off()
 	} else if o.DutyCycle == 100 {
