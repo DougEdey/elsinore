@@ -382,11 +382,15 @@ func (c *TemperatureController) UpdateSetPoint(newValue string) error {
 		return nil
 	}
 
+	clearOnError := false
 	if c.SetPointRaw == nil {
 		newTemp := physic.Temperature(0)
 		c.SetPointRaw = &newTemp
+		clearOnError = true
 	}
-	return c.SetPointRaw.Set(strings.ToUpper(newValue))
+	err := c.SetPointRaw.Set(strings.ToUpper(newValue))
+	if clearOnError && err != nil { c.SetPointRaw = nil }
+	return err
 }
 
 // MaxTemp -> For hysteria, this is the string for the max temp to turn off
