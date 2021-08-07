@@ -297,7 +297,7 @@ func TestTemperatureControllerUpdateOutput(t *testing.T) {
 		outputControl := devices.OutputControl{HeatOutput: &out21}
 		temperatureController.OutputControl = &outputControl
 		temperatureController.HeatSettings = devices.PidSettings{Configured: true, CycleTime: 12, Proportional: 1}
-		temperatureController.SetPointRaw.Set("40C")
+		temperatureController.UpdateSetPoint("40C")
 		temperatureController.UpdateOutput()
 
 		if outputControl.CycleTime != temperatureController.HeatSettings.CycleTime {
@@ -313,7 +313,7 @@ func TestTemperatureControllerUpdateOutput(t *testing.T) {
 		temperatureController.OutputControl = &outputControl
 		temperatureController.HeatSettings.Configured = false
 		temperatureController.CoolSettings = devices.PidSettings{Configured: true, CycleTime: 13, Proportional: 1}
-		temperatureController.SetPointRaw.Set("40C")
+		temperatureController.UpdateSetPoint("40C")
 		temperatureController.UpdateOutput()
 
 		if outputControl.CycleTime != temperatureController.CoolSettings.CycleTime {
@@ -388,6 +388,8 @@ func TestTemperatureControllerCalculate(t *testing.T) {
 		}
 	})
 
+	temperatureController.UpdateSetPoint("36C")
+
 	t.Run("Calculate updates previous time when the difference is over 100ms", func(t *testing.T) {
 		offset := int64(rand.Intn(100)+100) * 1_000_000
 		stubNext := func() time.Time { return time.Unix(1615715366, offset) }
@@ -403,7 +405,7 @@ func TestTemperatureControllerCalculate(t *testing.T) {
 	t.Run("Calculate uses proportional value when set", func(t *testing.T) {
 		temperatureController.HeatSettings.Proportional = 10
 		temperatureController.PreviousCalculationTime = stubNow()
-		temperatureController.SetPointRaw.Set("36C")
+
 		offset := int64(rand.Intn(100)+100) * 1_000_000
 		stubNext := func() time.Time { return time.Unix(1615715366, offset) }
 		var output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNext)
@@ -418,7 +420,7 @@ func TestTemperatureControllerCalculate(t *testing.T) {
 	t.Run("Calculate uses proportional value when set with a large delta caps to 100", func(t *testing.T) {
 		temperatureController.HeatSettings.Proportional = 10
 		temperatureController.PreviousCalculationTime = stubNow()
-		temperatureController.SetPointRaw.Set("100C")
+		temperatureController.UpdateSetPoint("100C")
 		offset := int64(rand.Intn(100)+100) * 1_000_000
 		stubNext := func() time.Time { return time.Unix(1615715366, offset) }
 		var output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNext)
@@ -434,7 +436,7 @@ func TestTemperatureControllerCalculate(t *testing.T) {
 		temperatureController.HeatSettings.Proportional = 10
 		temperatureController.HeatSettings.Integral = 0
 		temperatureController.PreviousCalculationTime = stubNow()
-		temperatureController.SetPointRaw.Set("36C")
+		temperatureController.UpdateSetPoint("36C")
 		offset := int64((101 + 100) * 1_000_000)
 		stubNext := func() time.Time { return time.Unix(1615715366, offset) }
 		var output = temperatureController.Calculate(temperatureController.AverageTemperature(), stubNext)
