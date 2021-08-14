@@ -175,3 +175,18 @@ func (s *Switch) onState() gpio.Level {
 	}
 	return gpio.High
 }
+
+// Save - Helper to save this object
+func (s *Switch) Save() {
+	database.Save(s)
+}
+
+// UpdateIdentifier - update the identifier (GPIO)
+func (s *Switch) UpdateIdentifier(identifier string) error {
+	if s.Output.Identifier == identifier {
+		log.Info().Msgf("No change in identifier, no update needed")
+		return nil
+	}
+
+	return s.Output.update(identifier)
+}

@@ -1041,6 +1041,10 @@ input SwitchSettingsInput {
   The new GPIO for the switch (required during switch creation)
   """
   gpio: String
+  """
+  The new state for the switch
+  """
+  state: SwitchMode
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -4629,6 +4633,14 @@ func (ec *executionContext) unmarshalInputSwitchSettingsInput(ctx context.Contex
 			if err != nil {
 				return it, err
 			}
+		case "state":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("state"))
+			it.State, err = ec.unmarshalOSwitchMode2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐSwitchMode(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -6042,6 +6054,22 @@ func (ec *executionContext) marshalOSwitch2ᚖgithubᚗcomᚋdougedeyᚋelsinore
 		return graphql.Null
 	}
 	return ec._Switch(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSwitchMode2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐSwitchMode(ctx context.Context, v interface{}) (*model.SwitchMode, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.SwitchMode)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSwitchMode2ᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐSwitchMode(ctx context.Context, sel ast.SelectionSet, v *model.SwitchMode) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOTempProbeDetails2ᚕᚖgithubᚗcomᚋdougedeyᚋelsinoreᚋgraphᚋmodelᚐTempProbeDetails(ctx context.Context, sel ast.SelectionSet, v []*model.TempProbeDetails) graphql.Marshaler {

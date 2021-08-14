@@ -116,11 +116,14 @@ func (op *OutPin) reset() error {
 	return nil
 }
 
-func (op *OutPin) update(identifier string) {
+func (op *OutPin) update(identifier string) error {
 	if len(strings.TrimSpace(identifier)) == 0 {
 		err := op.reset()
 		if err != nil {
 			log.Warn().Err(err)
+		}
+		if op != nil {
+			deleteOutpin(op)
 		}
 	} else if op.Identifier != identifier {
 		log.Warn().Msgf("Updating identifier %v", identifier)
@@ -129,6 +132,9 @@ func (op *OutPin) update(identifier string) {
 			log.Warn().Err(err)
 		}
 
+		if GpioInUse(identifier) {
+			return fmt.Errorf("gpio %v is already in use", identifier)
+		}
 		op.PinIO = nil
 		op.Identifier = identifier
 
@@ -137,6 +143,7 @@ func (op *OutPin) update(identifier string) {
 			log.Warn().Err(err)
 		}
 	}
+	return nil
 }
 
 // GpioInUse - Returns true if the GPIO specified is in use already
@@ -151,6 +158,11 @@ func GpioInUse(identifier string) bool {
 
 func deleteOutpin(outpin *OutPin) {
 	if outpin == nil {
+		return
+	}
+
+	err := outpin.reset()
+	if err != nil {
 		return
 	}
 

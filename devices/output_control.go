@@ -28,6 +28,20 @@ type OutputControl struct {
 	CycleTime  int64 `gorm:"-"`
 }
 
+// RegisterGpios - Register the outpins with the master list
+func (o *OutputControl) RegisterGpios() {
+	if o == nil {
+		return
+	}
+
+	if o.HeatOutput != nil {
+		outpins = append(outpins, o.HeatOutput)
+	}
+	if o.CoolOutput != nil {
+		outpins = append(outpins, o.CoolOutput)
+	}
+}
+
 // AfterDelete - After deleting a switch, remove the output pin
 func (o *OutputControl) AfterDelete(tx *gorm.DB) {
 	deleteOutpin(o.HeatOutput)
@@ -65,7 +79,10 @@ func (o *OutputControl) UpdateGpios(parentName string, heatGpio string, coolGpio
 		}
 		o.HeatOutput = newPin
 	} else if o.HeatOutput != nil {
-		o.HeatOutput.update(heatGpio)
+		err := o.HeatOutput.update(heatGpio)
+		if err != nil {
+			return err
+		}
 		if emptyHeatGpio {
 			err := o.HeatOutput.reset()
 			if err != nil {
@@ -82,7 +99,10 @@ func (o *OutputControl) UpdateGpios(parentName string, heatGpio string, coolGpio
 		}
 		o.CoolOutput = newPin
 	} else if o.CoolOutput != nil {
-		o.CoolOutput.update(coolGpio)
+		err := o.CoolOutput.update(coolGpio)
+		if err != nil {
+			return err
+		}
 		if emptyCoolGpio {
 			err := o.CoolOutput.reset()
 			if err != nil {
