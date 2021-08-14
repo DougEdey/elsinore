@@ -162,7 +162,8 @@ func (s *Switch) Name() string {
 
 // State - Returns on if this switch is on
 func (s *Switch) State() model.SwitchMode {
-	if s.Output.PinIO.Read() == s.onState() {
+	log.Info().Msgf("Reading Pin State %v", s.Output.Read())
+	if *s.Output.Read() == s.onState() {
 		return model.SwitchModeOn
 	}
 	return model.SwitchModeOff

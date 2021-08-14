@@ -163,6 +163,29 @@ func deleteOutpin(outpin *OutPin) {
 	}
 }
 
+// Read - Read the current pin level, High or Low
+func (op *OutPin) Read() *gpio.Level {
+	if op == nil {
+		return nil
+	}
+
+	if op.PinIO == nil {
+		log.Warn().Msgf("Resetting off %v", op.Identifier)
+		err := op.reset()
+		if err != nil {
+			return nil
+		}
+	}
+
+	if op.PinIO == nil {
+		log.Warn().Msgf("Cannot turn off %v", op.Identifier)
+		return nil
+	}
+
+	level := op.PinIO.Read()
+	return &level
+}
+
 func createOutpin(identifier string, friendlyName string) (*OutPin, error) {
 	if GpioInUse(identifier) {
 		return nil, fmt.Errorf("GPIO '%v' is already in use", identifier)
