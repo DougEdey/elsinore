@@ -129,6 +129,9 @@ func AllTemperatureControllers() []*TemperatureController {
 	if controllers == nil && database.FetchDatabase() != nil {
 		log.Info().Msg("Controllers array is nil, checking the database...")
 		database.FetchDatabase().Debug().Preload(clause.Associations).Find(&controllers)
+		for _, controller := range controllers {
+			controller.OutputControl.RegisterGpios()
+		}
 	}
 	return controllers
 }
@@ -389,7 +392,9 @@ func (c *TemperatureController) UpdateSetPoint(newValue string) error {
 		clearOnError = true
 	}
 	err := c.SetPointRaw.Set(strings.ToUpper(newValue))
-	if clearOnError && err != nil { c.SetPointRaw = nil }
+	if clearOnError && err != nil {
+		c.SetPointRaw = nil
+	}
 	return err
 }
 

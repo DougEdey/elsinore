@@ -315,4 +315,8 @@ input SwitchSettingsInput {
   The new GPIO for the switch (required during switch creation)
   """
   gpio: String
+  """
+  The new state for the switch
+  """
+  state: SwitchMode
 }

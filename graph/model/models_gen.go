@@ -62,6 +62,8 @@ type SwitchSettingsInput struct {
 	Name *string `json:"name"`
 	// The new GPIO for the switch (required during switch creation)
 	Gpio *string `json:"gpio"`
+	// The new state for the switch
+	State *SwitchMode `json:"state"`
 }
 
 // A device that reads a temperature and is assigned to a temperature controller

@@ -14,6 +14,7 @@ import (
 	"github.com/dougedey/elsinore/graph/model"
 	"github.com/dougedey/elsinore/hardware"
 	"github.com/dougedey/elsinore/system"
+	"github.com/rs/zerolog/log"
 )
 
 func (r *hysteriaSettingsResolver) ID(ctx context.Context, obj *devices.HysteriaSettings) (string, error) {
@@ -79,6 +80,9 @@ func (r *mutationResolver) ModifySwitch(ctx context.Context, switchSettings mode
 		if switchSettings.Name == nil || len(strings.TrimSpace(*switchSettings.Name)) == 0 {
 			errors = append(errors, "Name is required when creating a new switch")
 		}
+		if devices.GpioInUse(*switchSettings.Gpio) {
+			errors = append(errors, fmt.Sprintf("GPIO '%v' is already in use", *switchSettings.Gpio))
+		}
 		if len(errors) > 0 {
 			return nil, fmt.Errorf(strings.Join(errors, "\n"))
 		}
@@ -97,10 +101,24 @@ func (r *mutationResolver) ModifySwitch(ctx context.Context, switchSettings mode
 	if switchSettings.Name != nil {
 		curSwitch.Output.FriendlyName = *switchSettings.Name
 	}
+
 	if switchSettings.Gpio != nil {
-		curSwitch.Output.Identifier = *switchSettings.Gpio
-		curSwitch.Reset()
+		err := curSwitch.UpdateIdentifier(*switchSettings.Gpio)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	if switchSettings.State != nil {
+		log.Info().Msgf("Setting %v to %v", curSwitch.Output.Identifier, *switchSettings.State)
+		if *switchSettings.State == model.SwitchModeOn {
+			curSwitch.On()
+		}
+		if *switchSettings.State == model.SwitchModeOff {
+			curSwitch.Off()
+		}
+	}
+	curSwitch.Save()
 	return curSwitch, nil
 }
 

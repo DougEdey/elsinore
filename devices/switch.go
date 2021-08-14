@@ -162,7 +162,8 @@ func (s *Switch) Name() string {
 
 // State - Returns on if this switch is on
 func (s *Switch) State() model.SwitchMode {
-	if s.Output.PinIO.Read() == s.onState() {
+	log.Info().Msgf("Reading Pin State %v", s.Output.Read())
+	if *s.Output.Read() == s.onState() {
 		return model.SwitchModeOn
 	}
 	return model.SwitchModeOff
@@ -173,4 +174,19 @@ func (s *Switch) onState() gpio.Level {
 		return gpio.Low
 	}
 	return gpio.High
+}
+
+// Save - Helper to save this object
+func (s *Switch) Save() {
+	database.Save(s)
+}
+
+// UpdateIdentifier - update the identifier (GPIO)
+func (s *Switch) UpdateIdentifier(identifier string) error {
+	if s.Output.Identifier == identifier {
+		log.Info().Msgf("No change in identifier, no update needed")
+		return nil
+	}
+
+	return s.Output.update(identifier)
 }
